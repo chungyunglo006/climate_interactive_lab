@@ -11,6 +11,7 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
+    render_plotly_chart,
     render_sync_input,
     set_param_value,
     render_dynamic_controller,
@@ -143,9 +144,10 @@ with tab1:
     ))
     fig_3sp.update_layout(get_plotly_layout(
         "各緯度最終平衡覆蓋率分佈 (黑 / 白 / 灰 / 裸地)",
-        "緯度 (度)", "覆蓋率 (0~1)", height=500
+        "緯度 (度)", "覆蓋率 (0~1)", height=500,
+        x_range=[-90, 90], y_range=[0.0, 1.0]
     ))
-    st.plotly_chart(fig_3sp, use_container_width=True)
+    render_plotly_chart(fig_3sp, key="dw1d_grey_3sp_chart")
 
 # Tab 2: Temperature
 with tab2:
@@ -164,9 +166,10 @@ with tab2:
     fig_t_g.add_hline(y=22.5, line_dash="dot", line_color="#00e5ff", annotation_text="最適生長溫度 (22.5℃)")
     fig_t_g.update_layout(get_plotly_layout(
         "各緯度溫度剖面對比 (含灰雛菊生態系 vs 死星基線)",
-        "緯度 (度)", "溫度 (℃)", height=500
+        "緯度 (度)", "溫度 (℃)", height=500,
+        x_range=[-90, 90], y_range=[-40.0, 45.0]
     ))
-    st.plotly_chart(fig_t_g, use_container_width=True)
+    render_plotly_chart(fig_t_g, key="dw1d_grey_t_g_chart")
 
 # Tab 3: Step Playback
 with tab3:
@@ -180,14 +183,14 @@ with tab3:
         f_s.add_trace(go.Scatter(x=lats_grey_1d, y=step_data["ab"], mode="lines+markers", name="黑雛菊", line=dict(color="#475569")))
         f_s.add_trace(go.Scatter(x=lats_grey_1d, y=step_data["aw"], mode="lines+markers", name="白雛菊", line=dict(color="#f8fafc")))
         f_s.add_trace(go.Scatter(x=lats_grey_1d, y=step_data["ag"], mode="lines+markers", name="灰雛菊", line=dict(color="#94a3b8", dash="dash")))
-        f_s.update_layout(get_plotly_layout(f"步數 {selected_idx} 物種分佈", "緯度 (度)", "覆蓋率"))
-        st.plotly_chart(f_s, use_container_width=True)
+        f_s.update_layout(get_plotly_layout(f"步數 {selected_idx} 物種分佈", "緯度 (度)", "覆蓋率", x_range=[-90, 90], y_range=[0.0, 1.0]))
+        render_plotly_chart(f_s, key="dw1d_grey_f_s_chart")
 
     with s_c2:
         f_t = go.Figure()
         f_t.add_trace(go.Scatter(x=lats_grey_1d, y=step_data["temp"], mode="lines+markers", name="溫度", line=dict(color="#f59e0b", width=3)))
-        f_t.update_layout(get_plotly_layout(f"步數 {selected_idx} 溫度剖面 (均溫: {step_data['mean_t']:.2f}℃)", "緯度 (度)", "溫度 (℃)"))
-        st.plotly_chart(f_t, use_container_width=True)
+        f_t.update_layout(get_plotly_layout(f"步數 {selected_idx} 溫度剖面 (均溫: {step_data['mean_t']:.2f}℃)", "緯度 (度)", "溫度 (℃)", x_range=[-90, 90], y_range=[-40.0, 45.0]))
+        render_plotly_chart(f_t, key="dw1d_grey_f_t_chart")
 
 # Tab 4: Diagnostics Table
 with tab4:

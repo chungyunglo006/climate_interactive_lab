@@ -11,6 +11,7 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
+    render_plotly_chart,
     render_sync_input,
     set_param_value,
     render_dynamic_controller,
@@ -142,8 +143,8 @@ with tab1:
             x=df_dw["時間"], y=df_dw["裸地覆蓋率"],
             mode="lines", line=dict(color="#d97706", width=2, dash="dash"), name="裸地 (Bare Ground)"
         ))
-        fig_cov.update_layout(get_plotly_layout("雛菊物種覆蓋率時間消長", "時間", "覆蓋率 (0~1)"))
-        st.plotly_chart(fig_cov, use_container_width=True)
+        fig_cov.update_layout(get_plotly_layout("雛菊物種覆蓋率時間消長", "時間", "覆蓋率 (0~1)", y_range=[0.0, 1.0]))
+        render_plotly_chart(fig_cov, key="dw0d_cov_chart")
 
     with d_col2:
         fig_tp = go.Figure()
@@ -153,8 +154,8 @@ with tab1:
         ))
         fig_tp.add_hline(y=t_nobio, line_dash="dash", line_color="#ef4444", annotation_text=f"無生物死星基線 ({t_nobio:.1f}℃)")
         fig_tp.add_hline(y=22.5, line_dash="dot", line_color="#00e5ff", annotation_text="最適生長溫度 (22.5℃)")
-        fig_tp.update_layout(get_plotly_layout("行星溫度調控效應 vs 死星基線", "時間", "溫度 (℃)"))
-        st.plotly_chart(fig_tp, use_container_width=True)
+        fig_tp.update_layout(get_plotly_layout("行星溫度調控效應 vs 死星基線", "時間", "溫度 (℃)", y_range=[0.0, 50.0]))
+        render_plotly_chart(fig_tp, key="dw0d_tp_chart")
 
 # Tab 2: Luminosity Sweep
 with tab2:
@@ -180,8 +181,8 @@ with tab2:
             mode="lines", line=dict(color="#ef4444", width=2.5, dash="dash"), name="無生物死星對照線"
         ))
         fig_l_temp.add_vline(x=l_val, line_dash="dash", line_color="#00e5ff", annotation_text=f"目前 L: {l_val:.2f}")
-        fig_l_temp.update_layout(get_plotly_layout("光度 L vs 行星平衡溫度 (蓋亞恆溫平台)", "太陽光度 L", "平衡溫度 (℃)"))
-        st.plotly_chart(fig_l_temp, use_container_width=True)
+        fig_l_temp.update_layout(get_plotly_layout("光度 L vs 行星平衡溫度 (蓋亞恆溫平台)", "太陽光度 L", "平衡溫度 (℃)", x_range=[0.6, 1.65], y_range=[0.0, 60.0]))
+        render_plotly_chart(fig_l_temp, key="dw0d_l_temp_chart")
 
     with l_col2:
         fig_l_cov = go.Figure()
@@ -194,8 +195,8 @@ with tab2:
             mode="lines", line=dict(color="#f8fafc", width=2.5), name="白雛菊 (高光度散熱)"
         ))
         fig_l_cov.add_vline(x=l_val, line_dash="dash", line_color="#00e5ff")
-        fig_l_cov.update_layout(get_plotly_layout("物種隨光度演化的接替消長", "太陽光度 L", "平衡覆蓋率"))
-        st.plotly_chart(fig_l_cov, use_container_width=True)
+        fig_l_cov.update_layout(get_plotly_layout("物種隨光度演化的接替消長", "太陽光度 L", "平衡覆蓋率", x_range=[0.6, 1.65], y_range=[0.0, 1.0]))
+        render_plotly_chart(fig_l_cov, key="dw0d_l_cov_chart")
 
 # Tab 3: Growth Function
 with tab3:
@@ -210,8 +211,8 @@ with tab3:
     ))
     fig_beta.add_vline(x=22.5, line_dash="dash", line_color="#22c55e", annotation_text="最適生長點 22.5℃")
     fig_beta.add_hline(y=gamma_val, line_dash="dot", line_color="#ef4444", annotation_text=f"死亡率臨界 \\gamma = {gamma_val}")
-    fig_beta.update_layout(get_plotly_layout("拋物線生長函數 (最適溫度 22.5℃，可生存區間 5℃ ~ 40℃)", "溫度 (℃)", "生長率 $\\beta$"))
-    st.plotly_chart(fig_beta, use_container_width=True)
+    fig_beta.update_layout(get_plotly_layout("拋物線生長函數 (最適溫度 22.5℃，可生存區間 5℃ ~ 40℃)", "溫度 (℃)", "生長率 $\\beta$", x_range=[0.0, 45.0], y_range=[0.0, 1.05]))
+    render_plotly_chart(fig_beta, key="dw0d_beta_chart")
 
 # Tab 4: Diagnostics
 with tab4:

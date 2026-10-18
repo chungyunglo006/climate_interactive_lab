@@ -11,6 +11,7 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
+    render_plotly_chart,
     render_sync_input,
     set_param_value,
     render_dynamic_controller,
@@ -162,8 +163,11 @@ with tab1:
         ))
         fig_temp.add_hline(y=t_ice - 273.15, line_dash="dash", line_color="#38bdf8", annotation_text=f"冰封臨界溫 {t_ice-273.15:.1f}℃")
         fig_temp.add_hline(y=t_land - 273.15, line_dash="dash", line_color="#4ade80", annotation_text=f"無冰臨界溫 {t_land-273.15:.1f}℃")
-        fig_temp.update_layout(get_plotly_layout("溫度隨時間演化歷程", "時間 (年)", "溫度 (℃)"))
-        st.plotly_chart(fig_temp, use_container_width=True, key="ebm0d_temp_chart")
+        fig_temp.update_layout(get_plotly_layout(
+            "溫度隨時間演化歷程", "時間 (年)", "溫度 (℃)",
+            height=480, x_range=[0, itera * dt], y_range=[-45, 35]
+        ))
+        render_plotly_chart(fig_temp, key="ebm0d_temp_chart")
 
     with chart_c2:
         fig_rad = go.Figure()
@@ -179,8 +183,11 @@ with tab1:
             x=df_sim["時間 (年)"], y=df_sim["能量不平衡量 (W/m²)"],
             mode="lines", line=dict(color="#a855f7", width=1.5, dash="dot"), name="淨不平衡通量 $R_{in}-R_{out}$"
         ))
-        fig_rad.update_layout(get_plotly_layout("能量平衡收支通量", "時間 (年)", "輻射通量 (W/m²)"))
-        st.plotly_chart(fig_rad, use_container_width=True, key="ebm0d_rad_chart")
+        fig_rad.update_layout(get_plotly_layout(
+            "能量平衡收支通量", "時間 (年)", "輻射通量 (W/m²)",
+            height=480, x_range=[0, itera * dt], y_range=[-20, 380]
+        ))
+        render_plotly_chart(fig_rad, key="ebm0d_rad_chart")
 
     # Data download
     csv = df_sim.to_csv(index=False).encode('utf-8')
@@ -267,9 +274,10 @@ with tab2:
 
     fig_eq.update_layout(get_plotly_layout(
         f"0D EBM 輻射收支交點分析 (目前 $S_0 = {s0:.1f}$ W/m²)",
-        "全球平均溫度 $T$ (K)", "輻射通量 (W/m²)", height=520
+        "全球平均溫度 $T$ (K)", "輻射通量 (W/m²)", height=520,
+        x_range=[180, 320], y_range=[50, 400]
     ))
-    st.plotly_chart(fig_eq, use_container_width=True, key="ebm0d_eq_chart")
+    render_plotly_chart(fig_eq, key="ebm0d_eq_chart")
 
 # Tab 3: Bifurcation Diagram & Hysteresis
 with tab3:
@@ -306,9 +314,10 @@ with tab3:
 
     fig_bifur.update_layout(get_plotly_layout(
         "0D EBM 氣候分歧圖 (Bifurcation Diagram / S-curve)",
-        "太陽常數 $S_0$ (W/m²)", "平衡溫度 $T^*$ (K)", height=540
+        "太陽常數 $S_0$ (W/m²)", "平衡溫度 $T^*$ (K)", height=540,
+        x_range=[800, 2000], y_range=[200, 320]
     ))
-    st.plotly_chart(fig_bifur, use_container_width=True, key="ebm0d_bifur_chart")
+    render_plotly_chart(fig_bifur, key="ebm0d_bifur_chart")
 
 # Tab 4: Transient Collapse Simulation
 with tab4:
@@ -350,7 +359,7 @@ with tab4:
                 "太陽常數遞減時的氣候突變斷崖 (Transient Bifurcation Collapse)",
                 "太陽常數 $S_0$ (W/m²)", "地表溫度 (℃)", height=480
             ))
-            st.plotly_chart(fig_col, use_container_width=True)
+            render_plotly_chart(fig_col, key="ebm0d_col_chart")
 
             st.success("✅ 觀察結果：當太陽常數降至約 1288 W/m² 以下時，溫暖起始軌跡無法再維持液態水，反照率劇增造成溫度斷崖式墜落至 -40℃ 以下，全球徹底冰封！")
 

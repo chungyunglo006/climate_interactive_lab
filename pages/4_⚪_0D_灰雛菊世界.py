@@ -11,6 +11,7 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
+    render_plotly_chart,
     render_sync_input,
     set_param_value,
     render_dynamic_controller,
@@ -152,8 +153,8 @@ with tab1:
             x=df_grey["時間"], y=df_grey["裸地覆蓋率"],
             mode="lines", line=dict(color="#d97706", width=1.5, dash="dot"), name="裸地資源"
         ))
-        fig_cov3.update_layout(get_plotly_layout("三物種覆蓋率時間消長", "時間", "覆蓋率 (0~1)"))
-        st.plotly_chart(fig_cov3, use_container_width=True)
+        fig_cov3.update_layout(get_plotly_layout("三物種覆蓋率時間消長", "時間", "覆蓋率 (0~1)", y_range=[0.0, 1.0]))
+        render_plotly_chart(fig_cov3, key="dw0d_grey_cov_chart")
 
     with c_col2:
         fig_temp3 = go.Figure()
@@ -166,8 +167,8 @@ with tab1:
             mode="lines", line=dict(color="#94a3b8", width=2, dash="dash"), name="灰雛菊局地溫度 $T_g$"
         ))
         fig_temp3.add_hline(y=t_nobio, line_dash="dash", line_color="#ef4444", annotation_text=f"無生物基線 ({t_nobio:.1f}℃)")
-        fig_temp3.update_layout(get_plotly_layout("行星平均溫度與物種局部溫度", "時間", "溫度 (℃)"))
-        st.plotly_chart(fig_temp3, use_container_width=True)
+        fig_temp3.update_layout(get_plotly_layout("行星平均溫度與物種局部溫度", "時間", "溫度 (℃)", y_range=[0.0, 50.0]))
+        render_plotly_chart(fig_temp3, key="dw0d_grey_temp_chart")
 
 # Tab 2: Luminosity Comparison
 with tab2:
@@ -190,15 +191,15 @@ with tab2:
         x=df_l_grey["L"], y=df_l_grey["無生物溫度 (℃)"],
         mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="無生物死星基線"
     ))
-    l_fig.update_layout(get_plotly_layout("光度 L vs 行星溫度 (含灰雛菊)", "太陽光度 L", "溫度 (℃)"))
-    st.plotly_chart(l_fig, use_container_width=True)
+    l_fig.update_layout(get_plotly_layout("光度 L vs 行星溫度 (含灰雛菊)", "太陽光度 L", "溫度 (℃)", x_range=[0.6, 1.65], y_range=[0.0, 60.0]))
+    render_plotly_chart(l_fig, key="dw0d_grey_l_fig")
 
     cov_fig = go.Figure()
     cov_fig.add_trace(go.Scatter(x=df_l_grey["L"], y=df_l_grey["黑雛菊覆蓋率"], mode="lines", name="黑雛菊", line=dict(color="#475569")))
     cov_fig.add_trace(go.Scatter(x=df_l_grey["L"], y=df_l_grey["白雛菊覆蓋率"], mode="lines", name="白雛菊", line=dict(color="#f8fafc")))
     cov_fig.add_trace(go.Scatter(x=df_l_grey["L"], y=df_l_grey["灰雛菊覆蓋率"], mode="lines", name="灰雛菊", line=dict(color="#94a3b8", dash="dash")))
-    cov_fig.update_layout(get_plotly_layout("三物種平衡覆蓋率隨光度之分佈", "太陽光度 L", "覆蓋率"))
-    st.plotly_chart(cov_fig, use_container_width=True)
+    cov_fig.update_layout(get_plotly_layout("三物種平衡覆蓋率隨光度之分佈", "太陽光度 L", "覆蓋率", x_range=[0.6, 1.65], y_range=[0.0, 1.0]))
+    render_plotly_chart(cov_fig, key="dw0d_grey_cov_fig")
 
 # Tab 3: Diagnostics
 with tab3:

@@ -11,6 +11,7 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
+    render_plotly_chart,
     render_sync_input,
     set_param_value,
     render_dynamic_controller,
@@ -141,8 +142,8 @@ with tab1:
             line=dict(color="#ef4444", width=3), name="平衡溫度 (℃)"
         ))
         fig_t.add_hline(y=tcrit, line_dash="dash", line_color="#38bdf8", annotation_text=f"結冰臨界線 {tcrit}℃")
-        fig_t.update_layout(get_plotly_layout("緯度 vs 平衡溫度", "緯度 (度)", "溫度 (℃)"))
-        st.plotly_chart(fig_t, use_container_width=True)
+        fig_t.update_layout(get_plotly_layout("緯度 vs 平衡溫度", "緯度 (度)", "溫度 (℃)", x_range=[-90, 90], y_range=[-60, 45]))
+        render_plotly_chart(fig_t, key="ebm1d_t_chart")
 
     with pcol2:
         fig_a = go.Figure()
@@ -151,8 +152,8 @@ with tab1:
             mode="lines+markers", marker=dict(size=8, color="#00e5ff", symbol="square"),
             line=dict(color="#00e5ff", width=2.5), name="反照率 (Albedo)"
         ))
-        fig_a.update_layout(get_plotly_layout("緯度 vs 階梯反照率", "緯度 (度)", "反照率 (Albedo)"))
-        st.plotly_chart(fig_a, use_container_width=True)
+        fig_a.update_layout(get_plotly_layout("緯度 vs 階梯反照率", "緯度 (度)", "反照率 (Albedo)", x_range=[-90, 90], y_range=[0.0, 1.0]))
+        render_plotly_chart(fig_a, key="ebm1d_a_chart")
 
 # Tab 2: Dynamic Convergence Animation
 with tab2:
@@ -178,9 +179,9 @@ with tab2:
         fig_step_t.add_hline(y=tcrit, line_dash="dash", line_color="#00e5ff", annotation_text=f"Tcrit = {tcrit}℃")
         fig_step_t.update_layout(get_plotly_layout(
             f"迭代步 {selected_step} 溫度分佈 (均溫: {step_data['mean_t']:.2f} ℃)",
-            "緯度 (度)", "溫度 (℃)"
+            "緯度 (度)", "溫度 (℃)", x_range=[-90, 90], y_range=[-60, 45]
         ))
-        st.plotly_chart(fig_step_t, use_container_width=True)
+        render_plotly_chart(fig_step_t, key="ebm1d_step_t_chart")
 
     with anim_col2:
         fig_step_a = go.Figure()
@@ -191,9 +192,9 @@ with tab2:
         ))
         fig_step_a.update_layout(get_plotly_layout(
             f"迭代步 {selected_step} 反照率階梯 (冰緣: {step_data['ice_edge']:.0f}°N)",
-            "緯度 (度)", "反照率"
+            "緯度 (度)", "反照率", x_range=[-90, 90], y_range=[0.0, 1.0]
         ))
-        st.plotly_chart(fig_step_a, use_container_width=True)
+        render_plotly_chart(fig_step_a, key="ebm1d_step_a_chart")
 
 # Tab 3: Parameter Sweep
 with tab3:
@@ -226,7 +227,7 @@ with tab3:
             line=dict(color="#22c55e", width=2.5), name="全球平均溫度 (℃)"
         ))
         fig_sw_t.update_layout(get_plotly_layout(f"{x_label} vs 全球均溫", x_label, "全球均溫 (℃)"))
-        st.plotly_chart(fig_sw_t, use_container_width=True)
+        render_plotly_chart(fig_sw_t, key="ebm1d_sw_t_chart")
 
     with sw_col2:
         fig_sw_ice = go.Figure()
@@ -235,8 +236,8 @@ with tab3:
             mode="lines+markers", marker=dict(size=6, color="#38bdf8"),
             line=dict(color="#38bdf8", width=2.5), name="冰緣最低緯度 (°N)"
         ))
-        fig_sw_ice.update_layout(get_plotly_layout(f"{x_label} vs 冰雪前緣位置", x_label, "冰緣緯度 (°N)"))
-        st.plotly_chart(fig_sw_ice, use_container_width=True)
+        fig_sw_ice.update_layout(get_plotly_layout(f"{x_label} vs 冰雪前緣位置", x_label, "冰緣緯度 (°N)", y_range=[0, 90]))
+        render_plotly_chart(fig_sw_ice, key="ebm1d_sw_ice_chart")
 
 # Tab 4: Diagnostics Table
 with tab4:

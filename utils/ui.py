@@ -123,9 +123,26 @@ div[data-testid="stAppViewContainer"] [data-stale="true"],
     display: none !important;
 }
 
-/* Plotly smooth transitions without canvas flash */
-.js-plotly-plot, .plot-container, .plotly {
+/* Plotly smooth transitions without canvas flash & prevent ResizeObserver reflow */
+[data-testid="stPlotlyChart"] {
+    width: 100% !important;
+    contain: paint !important;
+}
+
+[data-testid="stPlotlyChart"] > div,
+.js-plotly-plot,
+.plot-container {
+    width: 100% !important;
     background-color: transparent !important;
+    transition: none !important;
+}
+
+/* Eliminate any opacity or visibility blink on rerun */
+[data-testid="stPlotlyChart"] [data-stale="true"],
+.stPlotlyChart[data-stale="true"],
+div[data-stale="true"] {
+    opacity: 1 !important;
+    filter: none !important;
     transition: none !important;
 }
 </style>
@@ -168,37 +185,67 @@ def render_stat_card(label, value, subtext=""):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def get_plotly_layout(title="", xaxis_title="", yaxis_title="", height=480):
-    """Returns a unified, ultra-clean dark Plotly layout with uirevision to prevent chart flickering."""
+def get_plotly_layout(title="", xaxis_title="", yaxis_title="", height=480, x_range=None, y_range=None):
+    """Returns a unified, ultra-clean dark Plotly layout with fixed ranges & uirevision to prevent chart flickering."""
+    x_dict = dict(
+        title=xaxis_title,
+        gridcolor="rgba(255,255,255,0.07)",
+        zerolinecolor="rgba(255,255,255,0.15)",
+        showline=True,
+        linecolor="rgba(255,255,255,0.1)"
+    )
+    if x_range is not None:
+        x_dict["range"] = x_range
+        x_dict["autorange"] = False
+        x_dict["fixedrange"] = True
+
+    y_dict = dict(
+        title=yaxis_title,
+        gridcolor="rgba(255,255,255,0.07)",
+        zerolinecolor="rgba(255,255,255,0.15)",
+        showline=True,
+        linecolor="rgba(255,255,255,0.1)"
+    )
+    if y_range is not None:
+        y_dict["range"] = y_range
+        y_dict["autorange"] = False
+        y_dict["fixedrange"] = True
+
     return dict(
         title=dict(text=title, font=dict(family="Plus Jakarta Sans", size=16, color="#f8fafc")),
         uirevision="constant",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(15, 23, 42, 0.45)",
         font=dict(family="Plus Jakarta Sans", color="#94a3b8"),
-        xaxis=dict(
-            title=xaxis_title,
-            gridcolor="rgba(255,255,255,0.07)",
-            zerolinecolor="rgba(255,255,255,0.15)",
-            showline=True,
-            linecolor="rgba(255,255,255,0.1)"
-        ),
-        yaxis=dict(
-            title=yaxis_title,
-            gridcolor="rgba(255,255,255,0.07)",
-            zerolinecolor="rgba(255,255,255,0.15)",
-            showline=True,
-            linecolor="rgba(255,255,255,0.1)"
-        ),
+        xaxis=x_dict,
+        yaxis=y_dict,
         legend=dict(
             bgcolor="rgba(15, 23, 42, 0.6)",
             bordercolor="rgba(255,255,255,0.1)",
             borderwidth=1,
             font=dict(size=12, color="#cbd5e1")
         ),
-        margin=dict(l=50, r=30, t=50, b=50),
+        margin=dict(l=55, r=30, t=50, b=50),
         height=height,
-        hovermode="x unified"
+        hovermode="x unified",
+        transition=dict(duration=0)
+    )
+
+
+def render_plotly_chart(fig, key=None):
+    """
+    Renders Plotly chart with optimal settings to completely prevent flicker:
+    - width='stretch' to avoid ResizeObserver layout flash
+    - theme=None to avoid Streamlit theme recalculation overhead per frame
+    - displayModeBar=False to stop modebar blinking
+    - stable key for element retention
+    """
+    st.plotly_chart(
+        fig,
+        width="stretch",
+        theme=None,
+        key=key,
+        config={"displayModeBar": False, "responsive": True}
     )
 
 

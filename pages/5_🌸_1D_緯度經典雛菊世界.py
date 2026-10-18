@@ -11,6 +11,7 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
+    render_plotly_chart,
     render_sync_input,
     set_param_value,
     render_dynamic_controller,
@@ -154,9 +155,10 @@ with tab1:
     ))
     fig_zonation.update_layout(get_plotly_layout(
         "各緯度最終平衡覆蓋率分佈 (極區黑雛菊 vs 赤道白雛菊)",
-        "緯度 (度)", "覆蓋率 (0~1)", height=500
+        "緯度 (度)", "覆蓋率 (0~1)", height=500,
+        x_range=[-90, 90], y_range=[0.0, 1.0]
     ))
-    st.plotly_chart(fig_zonation, use_container_width=True)
+    render_plotly_chart(fig_zonation, key="dw1d_zonation_chart")
 
 # Tab 2: Temperature Regulation
 with tab2:
@@ -187,9 +189,10 @@ with tab2:
     fig_t_comp.add_hline(y=22.5, line_dash="dot", line_color="#00e5ff", annotation_text="最適生長溫度 (22.5℃)")
     fig_t_comp.update_layout(get_plotly_layout(
         "各緯度溫度剖面對比 (生態調控 vs 死星基線)",
-        "緯度 (度)", "溫度 (℃)", height=500
+        "緯度 (度)", "溫度 (℃)", height=500,
+        x_range=[-90, 90], y_range=[-40.0, 45.0]
     ))
-    st.plotly_chart(fig_t_comp, use_container_width=True)
+    render_plotly_chart(fig_t_comp, key="dw1d_t_comp_chart")
 
 # Tab 3: Dynamic Step Playback
 with tab3:
@@ -203,14 +206,14 @@ with tab3:
         fig_s_cov.add_trace(go.Scatter(x=lats_1d, y=step_data["ab"], mode="lines+markers", name="黑雛菊", line=dict(color="#475569", width=2.5)))
         fig_s_cov.add_trace(go.Scatter(x=lats_1d, y=step_data["aw"], mode="lines+markers", name="白雛菊", line=dict(color="#f8fafc", width=2.5)))
         fig_s_cov.add_trace(go.Scatter(x=lats_1d, y=step_data["au"], mode="lines+markers", name="裸地", line=dict(color="#d97706", width=2, dash="dash")))
-        fig_s_cov.update_layout(get_plotly_layout(f"步數 {selected_idx} 各緯度覆蓋率", "緯度 (度)", "覆蓋率"))
-        st.plotly_chart(fig_s_cov, use_container_width=True)
+        fig_s_cov.update_layout(get_plotly_layout(f"步數 {selected_idx} 各緯度覆蓋率", "緯度 (度)", "覆蓋率", x_range=[-90, 90], y_range=[0.0, 1.0]))
+        render_plotly_chart(fig_s_cov, key="dw1d_s_cov_chart")
 
     with step_c2:
         fig_s_t = go.Figure()
         fig_s_t.add_trace(go.Scatter(x=lats_1d, y=step_data["temp"], mode="lines+markers", name="地表溫度", line=dict(color="#f59e0b", width=3)))
-        fig_s_t.update_layout(get_plotly_layout(f"步數 {selected_idx} 溫度剖面 (均溫: {step_data['mean_t']:.2f}℃)", "緯度 (度)", "溫度 (℃)"))
-        st.plotly_chart(fig_s_t, use_container_width=True)
+        fig_s_t.update_layout(get_plotly_layout(f"步數 {selected_idx} 溫度剖面 (均溫: {step_data['mean_t']:.2f}℃)", "緯度 (度)", "溫度 (℃)", x_range=[-90, 90], y_range=[-40.0, 45.0]))
+        render_plotly_chart(fig_s_t, key="dw1d_s_t_chart")
 
 # Tab 4: Data Matrix
 with tab4:
