@@ -50,57 +50,37 @@ render_hero(
     badges=["0D EBM", "Budyko-Sellers", "Ice-Albedo Feedback", "S-Curve", "Tipping Points"]
 )
 
-# Sidebar: Presets, Parameters and Dynamic Controller
+# Sidebar: Model Guide & Key Concepts
 with st.sidebar:
-    st.header("⚙️ 實驗控制面板")
+    st.header("🌍 0D 能量平衡實驗室")
+    st.markdown("""
+    **實驗特色**
+    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸永久固化，曲線零重劃、零閃爍。
+    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
+    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
+    
+    ---
+    **核心物理方程**
+    - 能量收支：$C \\frac{dT}{dt} = R_{in} - R_{out}$
+    - 吸收太陽能：$R_{in} = \\frac{S_0}{4}(1 - \\alpha(T))$
+    - 出射長波：$R_{out} = \\epsilon \\sigma T^4$
+    
+    ---
+    **狀態參考指標**
+    - 現代地球均溫：約 $15.0$ ℃ ($288.15$ K)
+    - 冰球臨界門檻：太陽輻射 $< 1288.6$ W/m²
+    """)
 
-    if "ebm0d_current_preset" not in st.session_state:
-        st.session_state["ebm0d_current_preset"] = "現今溫暖地球 (Modern Earth)"
-
-    preset = st.selectbox(
-        "🎯 預設情境 (Scenario Presets)",
-        ["自訂參數 (Custom)", "現今溫暖地球 (Modern Earth)", "冰球地球 (Snowball Earth)", "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)", "高太陽輻射超溫暖態"],
-        index=1
-    )
-
-    if preset != st.session_state["ebm0d_current_preset"] and preset != "自訂參數 (Custom)":
-        st.session_state["ebm0d_current_preset"] = preset
-        if preset == "現今溫暖地球 (Modern Earth)":
-            set_param_value("s0", 1368.0)
-            set_param_value("t_init", 288.0)
-        elif preset == "冰球地球 (Snowball Earth)":
-            set_param_value("s0", 1200.0)
-            set_param_value("t_init", 230.0)
-        elif preset == "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)":
-            set_param_value("s0", 1288.6)
-            set_param_value("t_init", 280.0)
-        elif preset == "高太陽輻射超溫暖態":
-            set_param_value("s0", 1600.0)
-            set_param_value("t_init", 295.0)
-
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0", min_val=800.0, max_val=2000.0, default_val=1368.0, step=5.0, format="%.1f")
-    t_init = render_sync_input("初始溫度 T_init (K)", "t_init", min_val=200.0, max_val=320.0, default_val=288.0, step=1.0, format="%.1f")
-
-    with st.expander("🔬 進階物性參數 (滑桿 + 精確數值輸入)", expanded=False):
-        alpha_ice = render_sync_input("冰雪反照率 α_ice", "alpha_ice", 0.4, 0.8, 0.6, 0.01, format="%.2f")
-        alpha_land = render_sync_input("陸地反照率 α_land", "alpha_land", 0.1, 0.5, 0.3, 0.01, format="%.2f")
-        t_ice = render_sync_input("冰雪臨界溫度 T_ice (K)", "t_ice", 240.0, 275.0, 263.0, 1.0, format="%.1f")
-        t_land = render_sync_input("暖地臨界溫度 T_land (K)", "t_land", 270.0, 300.0, 283.0, 1.0, format="%.1f")
-        epsilon = render_sync_input("有效發射率 ε (溫室效應)", "epsilon", 0.4, 0.9, 0.62, 0.01, format="%.2f")
-        dt = render_sync_input("時間步長 Δt (年)", "dt", 0.01, 0.5, 0.1, 0.01, format="%.2f")
-        itera = render_sync_input("總迭代步數", "itera", 50, 500, 200, 25, is_int=True)
-
-    # Dynamic Parameter Sweeper / Animation Controller
-    param_specs_0d = {
-        "太陽常數 S₀": {"key": "s0", "min": 800.0, "max": 2000.0, "step": 10.0, "unit": "W/m²"},
-        "初始溫度 T_init": {"key": "t_init", "min": 200.0, "max": 320.0, "step": 2.0, "unit": "K"},
-        "冰雪反照率 α_ice": {"key": "alpha_ice", "min": 0.4, "max": 0.8, "step": 0.02, "unit": ""},
-        "陸地反照率 α_land": {"key": "alpha_land", "min": 0.1, "max": 0.5, "step": 0.02, "unit": ""},
-        "有效發射率 ε": {"key": "epsilon", "min": 0.4, "max": 0.9, "step": 0.02, "unit": ""},
-        "冰雪臨界溫 T_ice": {"key": "t_ice", "min": 240.0, "max": 275.0, "step": 1.0, "unit": "K"},
-        "暖地臨界溫 T_land": {"key": "t_land", "min": 270.0, "max": 300.0, "step": 1.0, "unit": "K"}
-    }
-    render_dynamic_controller(param_specs_0d, page_prefix="ebm0d")
+# Default parameters
+s0 = float(st.session_state.get("s0", 1368.0))
+t_init = float(st.session_state.get("t_init", 288.0))
+alpha_ice = float(st.session_state.get("alpha_ice", 0.60))
+alpha_land = float(st.session_state.get("alpha_land", 0.30))
+t_ice = float(st.session_state.get("t_ice", 263.0))
+t_land = float(st.session_state.get("t_land", 283.0))
+epsilon = float(st.session_state.get("epsilon", 0.62))
+dt = 0.1
+itera = 200
 
 # Mathematical Principle Expander
 with st.expander("📐 點擊展開：模型數學原理與方程式"):
@@ -389,5 +369,5 @@ with tab4:
 
             st.success("✅ 觀察結果：當太陽常數降至約 1288 W/m² 以下時，溫暖起始軌跡無法再維持液態水，反照率劇增造成溫度斷崖式墜落至 -40℃ 以下，全球徹底冰封！")
 
-# Execute dynamic parameter animation step (runs at end after all charts and metrics render!)
-execute_dynamic_step(param_specs_0d, page_prefix="ebm0d")
+# Simulation complete
+

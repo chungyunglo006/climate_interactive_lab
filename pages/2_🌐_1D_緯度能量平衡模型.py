@@ -11,17 +11,16 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart,
-    render_sync_input,
-    set_param_value,
-    render_dynamic_controller,
-    execute_dynamic_step
+    render_plotly_chart
 )
 from models.ebm_1d import (
     run_ebm_1d,
     run_ebm_1d_history,
     sweep_ebm_1d_parameter
 )
+
+import streamlit.components.v1 as components
+from utils.interactive_ebm_1d import get_interactive_ebm1d_html
 
 st.set_page_config(
     page_title="1D 緯度能量平衡模型 (1D EBM) | 獨立實驗網站",
@@ -34,58 +33,42 @@ apply_custom_styles()
 render_hero(
     title="一維緯度能量平衡模型 (1D Latitudinal EBM)",
     subtitle="基於 Budyko-Sellers 擴散架構，研究太陽輻射緯度分佈、大氣經向熱傳遞、各緯度反照率階梯與冰雪邊界線 (Ice Edge)。",
-    badges=["1D EBM", "Budyko-Sellers", "Heat Diffusion K", "Ice Edge Dynamics", "Step Animation"]
+    badges=["1D EBM", "Budyko-Sellers", "Heat Diffusion K", "Ice Edge Dynamics", "60 FPS Canvas"]
 )
 
-# Sidebar Parameters
+# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
 with st.sidebar:
-    st.header("⚙️ 1D 物理參數設定")
+    st.header("🌐 1D 緯度能量平衡實驗室")
+    st.markdown("""
+    **實驗特色**
+    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
+    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
+    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
+    
+    ---
+    **核心物理機制**
+    - **太陽常數因子 ($Frac\_SC$)**：整體縮放太陽常數，驅動地球暖化或寒冷化。
+    - **大氣熱擴散係數 ($K$)**：決定赤道熱量向極區傳輸的效率。$K$ 越大，赤道與極區溫差越小。
+    - **冰雪臨界溫 ($T_{crit}$)**：低於此溫度地表轉為高反照率冰雪 ($a_{ice}$)。
+    - **出射公式**：Budyko 線性出射 $R_{out} = A + B \\cdot T$。
+    
+    ---
+    **參考基準**
+    - 現代地球赤道溫：約 $25 \\sim 28$ ℃
+    - 現代地球極區溫：約 $-20 \\sim -30$ ℃
+    - 現代冰雪邊界線：約 $72^\\circ\\text{N}$
+    """)
 
-    if "ebm1d_preset" not in st.session_state:
-        st.session_state["ebm1d_preset"] = "標準現今地球 (Frac_SC=1.0, K=3.87)"
-
-    preset = st.selectbox(
-        "🎯 預設情境 (Scenario Presets)",
-        ["自訂參數 (Custom)", "標準現今地球 (Frac_SC=1.0, K=3.87)", "太陽減弱寒冷化 (Frac_SC=0.85)", "熱量強擴散均溫地球 (K=7.0)", "熱量弱擴散極端溫差地球 (K=1.0)"],
-        index=1
-    )
-
-    if preset != st.session_state["ebm1d_preset"] and preset != "自訂參數 (Custom)":
-        st.session_state["ebm1d_preset"] = preset
-        if preset == "標準現今地球 (Frac_SC=1.0, K=3.87)":
-            set_param_value("sc_1d", 1370.0)
-            set_param_value("frac_sc_1d", 1.0)
-            set_param_value("k_diff_1d", 3.87)
-        elif preset == "太陽減弱寒冷化 (Frac_SC=0.85)":
-            set_param_value("frac_sc_1d", 0.85)
-            set_param_value("k_diff_1d", 3.87)
-        elif preset == "熱量強擴散均溫地球 (K=7.0)":
-            set_param_value("frac_sc_1d", 1.0)
-            set_param_value("k_diff_1d", 7.0)
-        elif preset == "熱量弱擴散極端溫差地球 (K=1.0)":
-            set_param_value("frac_sc_1d", 1.0)
-            set_param_value("k_diff_1d", 1.0)
-
-    sc = render_sync_input("太陽常數 SC (W/m²)", "sc_1d", 1000.0, 1600.0, 1370.0, 10.0, format="%.1f")
-    frac_sc = render_sync_input("太陽強度因子 Frac_SC", "frac_sc_1d", 0.60, 1.40, 1.0, 0.02, format="%.2f")
-    k_diff = render_sync_input("大氣熱擴散係數 K (W/m²/℃)", "k_diff_1d", 0.5, 9.0, 3.87, 0.1, format="%.2f")
-
-    with st.expander("🔬 Budyko 出射與反照率參數 (滑桿 + 精確數值)", expanded=False):
-        a_param = render_sync_input("Budyko 常數 A (W/m²)", "a_param_1d", 180.0, 260.0, 230.0, 5.0, format="%.1f")
-        b_param = render_sync_input("Budyko 斜率 B (W/m²/℃)", "b_param_1d", 1.5, 3.5, 2.17, 0.05, format="%.2f")
-        tcrit = render_sync_input("結冰臨界溫度 T_crit (℃)", "tcrit_1d", -25.0, 5.0, -10.0, 1.0, format="%.1f")
-        aice = render_sync_input("冰雪反照率 a_ice", "aice_1d", 0.4, 0.8, 0.6, 0.02, format="%.2f")
-        aland = render_sync_input("無冰反照率 a", "aland_1d", 0.1, 0.5, 0.3, 0.02, format="%.2f")
-        itera = render_sync_input("迭代收斂次數", "itera_1d", 10, 100, 50, 5, is_int=True)
-
-    # Dynamic Sweeper Controller
-    param_specs_1d = {
-        "太陽強度因子 Frac_SC": {"key": "frac_sc_1d", "min": 0.60, "max": 1.40, "step": 0.02, "unit": ""},
-        "大氣熱擴散係數 K": {"key": "k_diff_1d", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
-        "太陽常數 SC": {"key": "sc_1d", "min": 1000.0, "max": 1600.0, "step": 10.0, "unit": "W/m²"},
-        "結冰臨界溫度 T_crit": {"key": "tcrit_1d", "min": -25.0, "max": 5.0, "step": 1.0, "unit": "℃"}
-    }
-    render_dynamic_controller(param_specs_1d, page_prefix="ebm1d")
+# Default parameters
+sc = 1370.0
+frac_sc = 1.0
+k_diff = 3.87
+a_param = 230.0
+b_param = 2.17
+tcrit = -10.0
+aice = 0.60
+aland = 0.30
+itera = 50
 
 with st.expander("📐 點擊展開：1D EBM 數學原理與各緯度熱傳導公式"):
     st.markdown(r"""
@@ -111,49 +94,67 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📋 4. 各緯度能量通量守恆診斷表 (Diagnostics Table)"
 ])
 
+df_1d, mean_t = run_ebm_1d(
+    SC=sc, Frac_SC=frac_sc, A=a_param, B=b_param, K=k_diff,
+    aice=aice, a=aland, Tcrit=tcrit, itera=itera
+)
+
 # Tab 1: Equilibrium Profile
 with tab1:
     st.subheader("1D EBM 各緯度最終平衡分佈")
-    df_1d, mean_t = run_ebm_1d(
-        SC=sc, Frac_SC=frac_sc, A=a_param, B=b_param, K=k_diff,
-        aice=aice, a=aland, Tcrit=tcrit, itera=itera
+
+    render_engine = st.radio(
+        "圖表渲染模式",
+        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        horizontal=True,
+        key="ebm1d_engine_choice"
     )
 
-    ice_lats = [lat for lat, t in zip(df_1d["緯度 (度)"], df_1d["最終溫度 (℃)"]) if t < tcrit]
-    ice_edge = min(ice_lats) if ice_lats else 90.0
+    if "60 FPS" in render_engine:
+        components.html(
+            get_interactive_ebm1d_html(
+                sc=sc, frac_sc=frac_sc, a_param=a_param, b_param=b_param,
+                k_diff=k_diff, aice=aice, aland=aland, tcrit=tcrit, itera=itera
+            ),
+            height=820,
+            scrolling=False
+        )
+    else:
+        ice_lats = [lat for lat, t in zip(df_1d["緯度 (度)"], df_1d["最終溫度 (℃)"]) if t < tcrit]
+        ice_edge = min(ice_lats) if ice_lats else 90.0
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        render_stat_card("全球加權均溫", f"{mean_t:.2f} ℃")
-    with col2:
-        render_stat_card("赤道 (6°N) 溫度", f"{df_1d['最終溫度 (℃)'].iloc[-1]:.2f} ℃")
-    with col3:
-        render_stat_card("極區 (85°N) 溫度", f"{df_1d['最終溫度 (℃)'].iloc[0]:.2f} ℃")
-    with col4:
-        edge_text = f"{ice_edge:.0f}°N 以北" if ice_edge < 90 else "無冰覆蓋"
-        render_stat_card("冰雪邊界線 (Ice Edge)", edge_text, f"臨界值: {tcrit}℃")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            render_stat_card("全球加權均溫", f"{mean_t:.2f} ℃")
+        with col2:
+            render_stat_card("赤道 (6°N) 溫度", f"{df_1d['最終溫度 (℃)'].iloc[-1]:.2f} ℃")
+        with col3:
+            render_stat_card("極區 (85°N) 溫度", f"{df_1d['最終溫度 (℃)'].iloc[0]:.2f} ℃")
+        with col4:
+            edge_text = f"{ice_edge:.0f}°N 以北" if ice_edge < 90 else "無冰覆蓋"
+            render_stat_card("冰雪邊界線 (Ice Edge)", edge_text, f"臨界值: {tcrit}℃")
 
-    pcol1, pcol2 = st.columns(2)
-    with pcol1:
-        fig_t = go.Figure()
-        fig_t.add_trace(go.Scatter(
-            x=df_1d["緯度 (度)"], y=df_1d["最終溫度 (℃)"],
-            mode="lines+markers", marker=dict(size=8, color="#ef4444"),
-            line=dict(color="#ef4444", width=3), name="平衡溫度 (℃)"
-        ))
-        fig_t.add_hline(y=tcrit, line_dash="dash", line_color="#38bdf8", annotation_text=f"結冰臨界線 {tcrit}℃")
-        fig_t.update_layout(get_plotly_layout("緯度 vs 平衡溫度", "緯度 (度)", "溫度 (℃)", x_range=[-90, 90], y_range=[-60, 45]))
-        render_plotly_chart(fig_t, key="ebm1d_t_chart")
+        pcol1, pcol2 = st.columns(2)
+        with pcol1:
+            fig_t = go.Figure()
+            fig_t.add_trace(go.Scatter(
+                x=df_1d["緯度 (度)"], y=df_1d["最終溫度 (℃)"],
+                mode="lines+markers", marker=dict(size=8, color="#ef4444"),
+                line=dict(color="#ef4444", width=3), name="平衡溫度 (℃)"
+            ))
+            fig_t.add_hline(y=tcrit, line_dash="dash", line_color="#38bdf8", annotation_text=f"結冰臨界線 {tcrit}℃")
+            fig_t.update_layout(get_plotly_layout("緯度 vs 平衡溫度", "緯度 (度)", "溫度 (℃)", x_range=[-90, 90], y_range=[-60, 45]))
+            render_plotly_chart(fig_t, key="ebm1d_t_chart")
 
-    with pcol2:
-        fig_a = go.Figure()
-        fig_a.add_trace(go.Scatter(
-            x=df_1d["緯度 (度)"], y=df_1d["最終反照率 (Albedo)"],
-            mode="lines+markers", marker=dict(size=8, color="#00e5ff", symbol="square"),
-            line=dict(color="#00e5ff", width=2.5), name="反照率 (Albedo)"
-        ))
-        fig_a.update_layout(get_plotly_layout("緯度 vs 階梯反照率", "緯度 (度)", "反照率 (Albedo)", x_range=[-90, 90], y_range=[0.0, 1.0]))
-        render_plotly_chart(fig_a, key="ebm1d_a_chart")
+        with pcol2:
+            fig_a = go.Figure()
+            fig_a.add_trace(go.Scatter(
+                x=df_1d["緯度 (度)"], y=df_1d["最終反照率 (Albedo)"],
+                mode="lines+markers", marker=dict(size=8, color="#00e5ff", symbol="square"),
+                line=dict(color="#00e5ff", width=2.5), name="反照率 (Albedo)"
+            ))
+            fig_a.update_layout(get_plotly_layout("緯度 vs 階梯反照率", "緯度 (度)", "反照率 (Albedo)", x_range=[-90, 90], y_range=[0.0, 1.0]))
+            render_plotly_chart(fig_a, key="ebm1d_a_chart")
 
 # Tab 2: Dynamic Convergence Animation
 with tab2:
@@ -262,6 +263,5 @@ with tab4:
         mime="text/csv"
     )
 
-# Execute dynamic animation step at end of page
-execute_dynamic_step(param_specs_1d, page_prefix="ebm1d")
+
 

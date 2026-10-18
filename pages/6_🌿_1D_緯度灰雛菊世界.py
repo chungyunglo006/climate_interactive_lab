@@ -11,13 +11,11 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart,
-    render_sync_input,
-    set_param_value,
-    render_dynamic_controller,
-    execute_dynamic_step
+    render_plotly_chart
 )
 from models.daisy_1d import run_daisyworld_with_grey_1d
+import streamlit.components.v1 as components
+from utils.interactive_daisy_grey_1d import get_interactive_daisy_grey_1d_html
 
 st.set_page_config(
     page_title="1D 緯度灰雛菊世界 | 獨立實驗網站",
@@ -30,66 +28,45 @@ apply_custom_styles()
 render_hero(
     title="一維緯度灰雛菊世界 (1D Latitudinal Grey Daisyworld)",
     subtitle="在空間維度上引入中性反照率的第三物種（灰雛菊），探討三物種在不同緯度的空間競爭、棲位劃分與對氣候調節的影響。",
-    badges=["1D Grey Daisyworld", "3-Species Spatial Competition", "Niche Differentiation", "Neutral Feedbacks"]
+    badges=["1D Grey Daisyworld", "3-Species Spatial Competition", "Niche Differentiation", "Neutral Feedbacks", "60 FPS Canvas"]
 )
 
-# Sidebar Parameters
-st.sidebar.header("⚙️ 1D 灰雛菊空間參數")
-
-if "daisygrey1d_preset" not in st.session_state:
+# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
 with st.sidebar:
-    st.header("⚙️ 1D 灰雛菊空間參數")
+    st.header("🌿 1D 灰雛菊空間實驗室")
+    st.markdown("""
+    **實驗特色**
+    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
+    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
+    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
+    
+    ---
+    **三物種空間棲位機制**
+    - **黑雛菊 ($a_b$)**：低反照率 (0.25)，吸收微弱太陽輻射，在寒冷的高緯極區具優勢。
+    - **白雛菊 ($a_w$)**：高反照率 (0.75)，反射過剩陽光，在炎熱的低緯赤道具優勢。
+    - **灰雛菊 ($a_g$)**：中性反照率 (0.50)，在溫度適中的中緯度溫帶地區具競爭力，但無法應對極端溫度的兩極與赤道。
+    
+    ---
+    **參考基準**
+    - 太陽常數 $S_0$：$2100$ W/m²
+    - 大氣擴散係數 $K$：$3.87$ W/m²/℃
+    - 灰雛菊反照率：$0.50$
+    """)
 
-    if "daisygrey1d_preset" not in st.session_state:
-        st.session_state["daisygrey1d_preset"] = "標準三物種空間平衡 (S0=2100, L=1.0)"
-
-    preset = st.selectbox(
-        "🎯 預設情境 (Scenario Presets)",
-        ["自訂參數 (Custom)", "標準三物種空間平衡 (S0=2100, L=1.0)", "灰雛菊高初始佔據 (ag_init=0.08)", "極區黑灰競爭 (S0=1850)", "赤道白灰競爭 (S0=2350)"],
-        index=1
-    )
-
-    if preset != st.session_state["daisygrey1d_preset"] and preset != "自訂參數 (Custom)":
-        st.session_state["daisygrey1d_preset"] = preset
-        if preset == "標準三物種空間平衡 (S0=2100, L=1.0)":
-            set_param_value("s0_1dwg", 2100.0)
-            set_param_value("l_val_1dwg", 1.0)
-            set_param_value("ag_init_1dwg", 0.01)
-        elif preset == "灰雛菊高初始佔據 (ag_init=0.08)":
-            set_param_value("s0_1dwg", 2100.0)
-            set_param_value("l_val_1dwg", 1.0)
-            set_param_value("ag_init_1dwg", 0.08)
-        elif preset == "極區黑灰競爭 (S0=1850)":
-            set_param_value("s0_1dwg", 1850.0)
-            set_param_value("l_val_1dwg", 1.0)
-            set_param_value("ag_init_1dwg", 0.01)
-        elif preset == "赤道白灰競爭 (S0=2350)":
-            set_param_value("s0_1dwg", 2350.0)
-            set_param_value("l_val_1dwg", 1.0)
-            set_param_value("ag_init_1dwg", 0.01)
-
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dwg", 1400.0, 2800.0, 2100.0, 50.0, format="%.1f")
-    l_val = render_sync_input("太陽光度因子 L", "l_val_1dwg", 0.6, 1.6, 1.0, 0.02, format="%.2f")
-    k_diff = render_sync_input("大氣熱擴散傳遞 K (W/m²/℃)", "k_diff_1dwg", 0.5, 9.0, 3.87, 0.1, format="%.2f")
-
-    with st.expander("🔬 反照率與初始分佈 (滑桿 + 精確數值)", expanded=False):
-        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
-        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_1dwg", 0.1, 0.4, 0.25, 0.02, format="%.2f")
-        alpha_g = render_sync_input("灰雛菊反照率 α_g", "alpha_g_1dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
-        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_1dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
-        q_val = render_sync_input("微氣候係數 q (℃)", "q_val_1dwg", 5.0, 40.0, 20.0, 1.0, format="%.1f")
-        gamma_val = render_sync_input("死亡率 γ", "gamma_val_1dwg", 0.05, 0.6, 0.3, 0.02, format="%.2f")
-        ag_init = render_sync_input("灰雛菊初始覆蓋率", "ag_init_1dwg", 0.001, 0.2, 0.01, 0.005, format="%.3f")
-        itera = render_sync_input("迭代步數", "itera_1dwg", 30, 300, 150, 25, is_int=True)
-
-    # Dynamic Sweeper Controller
-    param_specs_1dwg = {
-        "太陽常數 S₀": {"key": "s0_1dwg", "min": 1400.0, "max": 2800.0, "step": 50.0, "unit": "W/m²"},
-        "太陽光度 L": {"key": "l_val_1dwg", "min": 0.6, "max": 1.6, "step": 0.02, "unit": ""},
-        "大氣擴散係數 K": {"key": "k_diff_1dwg", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
-        "灰雛菊初始覆蓋率": {"key": "ag_init_1dwg", "min": 0.001, "max": 0.2, "step": 0.01, "unit": ""}
-    }
-    render_dynamic_controller(param_specs_1dwg, page_prefix="daisygrey1d")
+# Default parameters
+s0 = 2100.0
+l_val = 1.0
+k_diff = 3.87
+alpha_w = 0.75
+alpha_b = 0.25
+alpha_g = 0.50
+alpha_u = 0.50
+q_val = 20.0
+gamma_val = 0.30
+ag_init = 0.01
+a_param = 230.0
+b_param = 2.17
+itera = 150
 
 # Run Simulation
 history_grey_1d, lats_grey_1d, temp_nobio_g = run_daisyworld_with_grey_1d(
@@ -109,45 +86,63 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # Tab 1: 3-Species Profile
 with tab1:
     st.subheader("1D 灰雛菊世界：三物種緯度平衡分佈")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        render_stat_card("全球加權均溫", f"{final_g['mean_t']:.2f} ℃")
-    with col2:
-        render_stat_card("赤道白雛菊", f"{final_g['aw'][-1]*100:.1f} %")
-    with col3:
-        render_stat_card("極區黑雛菊", f"{final_g['ab'][0]*100:.1f} %")
-    with col4:
-        render_stat_card("中緯度灰雛菊", f"{final_g['ag'][4]*100:.1f} %")
-    with col5:
-        render_stat_card("全域裸地率", f"{np.mean(final_g['au'])*100:.1f} %")
 
-    fig_3sp = go.Figure()
-    fig_3sp.add_trace(go.Scatter(
-        x=lats_grey_1d, y=final_g["ab"],
-        mode="lines+markers", marker=dict(size=8, color="#475569"),
-        line=dict(color="#475569", width=3), name="黑雛菊 (極區優勢保溫)"
-    ))
-    fig_3sp.add_trace(go.Scatter(
-        x=lats_grey_1d, y=final_g["aw"],
-        mode="lines+markers", marker=dict(size=8, color="#f8fafc"),
-        line=dict(color="#f8fafc", width=3), name="白雛菊 (赤道優勢降溫)"
-    ))
-    fig_3sp.add_trace(go.Scatter(
-        x=lats_grey_1d, y=final_g["ag"],
-        mode="lines+markers", marker=dict(size=8, color="#94a3b8"),
-        line=dict(color="#94a3b8", width=3, dash="dash"), name="灰雛菊 (中性物種)"
-    ))
-    fig_3sp.add_trace(go.Scatter(
-        x=lats_grey_1d, y=final_g["au"],
-        mode="lines+markers", marker=dict(size=6, color="#d97706"),
-        line=dict(color="#d97706", width=2, dash="dot"), name="裸地資源"
-    ))
-    fig_3sp.update_layout(get_plotly_layout(
-        "各緯度最終平衡覆蓋率分佈 (黑 / 白 / 灰 / 裸地)",
-        "緯度 (度)", "覆蓋率 (0~1)", height=500,
-        x_range=[-90, 90], y_range=[0.0, 1.0]
-    ))
-    render_plotly_chart(fig_3sp, key="dw1d_grey_3sp_chart")
+    render_engine = st.radio(
+        "圖表渲染模式",
+        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        horizontal=True,
+        key="daisygrey1d_engine_choice"
+    )
+
+    if "60 FPS" in render_engine:
+        components.html(
+            get_interactive_daisy_grey_1d_html(
+                s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
+                q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera
+            ),
+            height=820,
+            scrolling=False
+        )
+    else:
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            render_stat_card("全球加權均溫", f"{final_g['mean_t']:.2f} ℃")
+        with col2:
+            render_stat_card("赤道白雛菊", f"{final_g['aw'][-1]*100:.1f} %")
+        with col3:
+            render_stat_card("極區黑雛菊", f"{final_g['ab'][0]*100:.1f} %")
+        with col4:
+            render_stat_card("中緯度灰雛菊", f"{final_g['ag'][4]*100:.1f} %")
+        with col5:
+            render_stat_card("全域裸地率", f"{np.mean(final_g['au'])*100:.1f} %")
+
+        fig_3sp = go.Figure()
+        fig_3sp.add_trace(go.Scatter(
+            x=lats_grey_1d, y=final_g["ab"],
+            mode="lines+markers", marker=dict(size=8, color="#475569"),
+            line=dict(color="#475569", width=3), name="黑雛菊 (極區優勢保溫)"
+        ))
+        fig_3sp.add_trace(go.Scatter(
+            x=lats_grey_1d, y=final_g["aw"],
+            mode="lines+markers", marker=dict(size=8, color="#f8fafc"),
+            line=dict(color="#f8fafc", width=3), name="白雛菊 (赤道優勢降溫)"
+        ))
+        fig_3sp.add_trace(go.Scatter(
+            x=lats_grey_1d, y=final_g["ag"],
+            mode="lines+markers", marker=dict(size=8, color="#94a3b8"),
+            line=dict(color="#94a3b8", width=3, dash="dash"), name="灰雛菊 (中性物種)"
+        ))
+        fig_3sp.add_trace(go.Scatter(
+            x=lats_grey_1d, y=final_g["au"],
+            mode="lines+markers", marker=dict(size=6, color="#d97706"),
+            line=dict(color="#d97706", width=2, dash="dot"), name="裸地資源"
+        ))
+        fig_3sp.update_layout(get_plotly_layout(
+            "各緯度最終平衡覆蓋率分佈 (黑 / 白 / 灰 / 裸地)",
+            "緯度 (度)", "覆蓋率 (0~1)", height=500,
+            x_range=[-90, 90], y_range=[0.0, 1.0]
+        ))
+        render_plotly_chart(fig_3sp, key="dw1d_grey_3sp_chart")
 
 # Tab 2: Temperature
 with tab2:
@@ -224,6 +219,5 @@ with tab4:
         mime="text/csv"
     )
 
-# Execute dynamic animation step at end of page
-execute_dynamic_step(param_specs_1dwg, page_prefix="daisygrey1d")
+
 

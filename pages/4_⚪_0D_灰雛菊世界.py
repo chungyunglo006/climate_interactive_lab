@@ -11,17 +11,15 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart,
-    render_sync_input,
-    set_param_value,
-    render_dynamic_controller,
-    execute_dynamic_step
+    render_plotly_chart
 )
 from models.daisy_0d import (
     run_daisyworld_with_grey,
     sweep_daisyworld_grey_luminosity,
     run_daisyworld
 )
+import streamlit.components.v1 as components
+from utils.interactive_daisy_grey_0d import get_interactive_daisy_grey_0d_html
 
 st.set_page_config(
     page_title="0D 灰雛菊世界 (Daisyworld with Grey Daisies) | 獨立實驗網站",
@@ -34,64 +32,44 @@ apply_custom_styles()
 render_hero(
     title="帶有灰雛菊因子的三物種雛菊世界 (Grey Daisyworld)",
     subtitle="引入反照率等於裸地的中性物種（灰雛菊），探討「無氣候調節貢獻的物種」在生態系中的競爭動態與自然選擇效應。",
-    badges=["Grey Daisy", "Neutral Albedo", "3-Species Competition", "Ecological Cheater Hypothesis", "Homeostasis Stability"]
+    badges=["Grey Daisy", "Neutral Albedo", "3-Species Competition", "Ecological Cheater Hypothesis", "60 FPS Canvas"]
 )
 
-# Sidebar Parameters
+# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
 with st.sidebar:
-    st.header("⚙️ 灰雛菊實驗參數")
+    st.header("⚪ 0D 灰雛菊實驗室")
+    st.markdown("""
+    **實驗特色**
+    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
+    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
+    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
+    
+    ---
+    **核心生物物理機制**
+    - **灰雛菊 ($a_g$)**：反照率等於裸地 ($0.50$)，為「中性突變種/搭便車者 (Cheater)」，不對全球氣候提供主動保溫或降溫反饋。
+    - **土地競爭**：灰雛菊佔據空間 ($a_u = 1 - a_w - a_b - a_g$)，限制黑白雛菊擴張。
+    - **穩定性檢驗**：在適溫下灰雛菊能共存，但在偏離最適溫度的極端環境下，黑白雛菊依然憑藉微氣候優勢重新奪回主導權！
+    
+    ---
+    **參考基準**
+    - 灰雛菊反照率：$0.50$
+    - 最適生長溫度：$22.5$ ℃
+    - 死亡率：$0.30$
+    """)
 
-    if "daisygrey0d_preset" not in st.session_state:
-        st.session_state["daisygrey0d_preset"] = "標準三物種共存 (L=1.0, ag=0.01)"
-
-    preset = st.selectbox(
-        "🎯 預設情境 (Scenario Presets)",
-        ["自訂參數 (Custom)", "標準三物種共存 (L=1.0, ag=0.01)", "灰雛菊強勢入侵 (ag_init=0.10)", "高光度三物種競爭 (L=1.20)", "低光度黑灰競爭 (L=0.80)"],
-        index=1
-    )
-
-    if preset != st.session_state["daisygrey0d_preset"] and preset != "自訂參數 (Custom)":
-        st.session_state["daisygrey0d_preset"] = preset
-        if preset == "標準三物種共存 (L=1.0, ag=0.01)":
-            set_param_value("s0_dwg", 917.0)
-            set_param_value("l_val_dwg", 1.0)
-            set_param_value("ag_init_dwg", 0.01)
-        elif preset == "灰雛菊強勢入侵 (ag_init=0.10)":
-            set_param_value("s0_dwg", 917.0)
-            set_param_value("l_val_dwg", 1.0)
-            set_param_value("ag_init_dwg", 0.10)
-        elif preset == "高光度三物種競爭 (L=1.20)":
-            set_param_value("s0_dwg", 917.0)
-            set_param_value("l_val_dwg", 1.20)
-            set_param_value("ag_init_dwg", 0.01)
-        elif preset == "低光度黑灰競爭 (L=0.80)":
-            set_param_value("s0_dwg", 917.0)
-            set_param_value("l_val_dwg", 0.80)
-            set_param_value("ag_init_dwg", 0.01)
-
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dwg", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
-    l_val = render_sync_input("太陽光度因子 L", "l_val_dwg", 0.5, 1.8, 1.0, 0.02, format="%.2f")
-
-    with st.expander("🔬 反照率與初始覆蓋率 (滑桿 + 精確數值)", expanded=False):
-        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
-        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_dwg", 0.1, 0.4, 0.25, 0.02, format="%.2f")
-        alpha_g = render_sync_input("灰雛菊反照率 α_g (中性物種)", "alpha_g_dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
-        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
-        q_val = render_sync_input("微氣候係數 q (℃)", "q_val_dwg", 5.0, 40.0, 20.0, 1.0, format="%.1f")
-        gamma_val = render_sync_input("死亡率 γ", "gamma_val_dwg", 0.05, 0.6, 0.3, 0.02, format="%.2f")
-        aw_init = render_sync_input("白雛菊初始值", "aw_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
-        ab_init = render_sync_input("黑雛菊初始值", "ab_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
-        ag_init = render_sync_input("灰雛菊初始值", "ag_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
-        itera = render_sync_input("迭代步數", "itera_dwg", 50, 400, 150, 25, is_int=True)
-
-    # Dynamic Sweeper Controller
-    param_specs_dwg = {
-        "太陽光度因子 L": {"key": "l_val_dwg", "min": 0.5, "max": 1.8, "step": 0.02, "unit": ""},
-        "太陽常數 S₀": {"key": "s0_dwg", "min": 700.0, "max": 1300.0, "step": 10.0, "unit": "W/m²"},
-        "灰雛菊初始覆蓋率": {"key": "ag_init_dwg", "min": 0.001, "max": 0.3, "step": 0.01, "unit": ""},
-        "微氣候係數 q": {"key": "q_val_dwg", "min": 5.0, "max": 40.0, "step": 1.0, "unit": "℃"}
-    }
-    render_dynamic_controller(param_specs_dwg, page_prefix="daisygrey0d")
+# Default parameters
+s0 = 917.0
+l_val = 1.0
+alpha_w = 0.75
+alpha_b = 0.25
+alpha_g = 0.50
+alpha_u = 0.50
+q_val = 20.0
+gamma_val = 0.30
+aw_init = 0.01
+ab_init = 0.01
+ag_init = 0.01
+itera = 150
 
 with st.expander("📐 點擊展開：灰雛菊模型原理與演化論批判"):
     st.markdown(r"""
@@ -114,61 +92,80 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # Tab 1: Three-Species Dynamics
+df_grey, t_nobio = run_daisyworld_with_grey(
+    S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
+    q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera
+)
+
+# Tab 1: Three-Species Dynamics
 with tab1:
     st.subheader("黑、白、灰三物種共存與時間演化")
-    df_grey, t_nobio = run_daisyworld_with_grey(
-        S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
-        q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera
+
+    render_engine = st.radio(
+        "圖表渲染模式",
+        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        horizontal=True,
+        key="daisygrey0d_engine_choice"
     )
 
-    last = df_grey.iloc[-1]
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        render_stat_card("調控均溫 $T_p$", f"{last['行星平均溫度 (℃)']:.2f} ℃")
-    with col2:
-        render_stat_card("黑雛菊覆蓋率", f"{last['黑雛菊覆蓋率']*100:.1f} %")
-    with col3:
-        render_stat_card("白雛菊覆蓋率", f"{last['白雛菊覆蓋率']*100:.1f} %")
-    with col4:
-        render_stat_card("灰雛菊覆蓋率", f"{last['灰雛菊覆蓋率']*100:.1f} %")
-    with col5:
-        render_stat_card("裸地覆蓋率", f"{last['裸地覆蓋率']*100:.1f} %")
+    if "60 FPS" in render_engine:
+        components.html(
+            get_interactive_daisy_grey_0d_html(
+                s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
+                q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera
+            ),
+            height=820,
+            scrolling=False
+        )
+    else:
+        last = df_grey.iloc[-1]
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            render_stat_card("調控均溫 $T_p$", f"{last['行星平均溫度 (℃)']:.2f} ℃")
+        with col2:
+            render_stat_card("黑雛菊覆蓋率", f"{last['黑雛菊覆蓋率']*100:.1f} %")
+        with col3:
+            render_stat_card("白雛菊覆蓋率", f"{last['白雛菊覆蓋率']*100:.1f} %")
+        with col4:
+            render_stat_card("灰雛菊覆蓋率", f"{last['灰雛菊覆蓋率']*100:.1f} %")
+        with col5:
+            render_stat_card("裸地覆蓋率", f"{last['裸地覆蓋率']*100:.1f} %")
 
-    c_col1, c_col2 = st.columns(2)
-    with c_col1:
-        fig_cov3 = go.Figure()
-        fig_cov3.add_trace(go.Scatter(
-            x=df_grey["時間"], y=df_grey["黑雛菊覆蓋率"],
-            mode="lines", line=dict(color="#334155", width=3), name="黑雛菊 (保溫)"
-        ))
-        fig_cov3.add_trace(go.Scatter(
-            x=df_grey["時間"], y=df_grey["白雛菊覆蓋率"],
-            mode="lines", line=dict(color="#f8fafc", width=3), name="白雛菊 (散熱)"
-        ))
-        fig_cov3.add_trace(go.Scatter(
-            x=df_grey["時間"], y=df_grey["灰雛菊覆蓋率"],
-            mode="lines", line=dict(color="#94a3b8", width=3, dash="dash"), name="灰雛菊 (中性競爭者)"
-        ))
-        fig_cov3.add_trace(go.Scatter(
-            x=df_grey["時間"], y=df_grey["裸地覆蓋率"],
-            mode="lines", line=dict(color="#d97706", width=1.5, dash="dot"), name="裸地資源"
-        ))
-        fig_cov3.update_layout(get_plotly_layout("三物種覆蓋率時間消長", "時間", "覆蓋率 (0~1)", y_range=[0.0, 1.0]))
-        render_plotly_chart(fig_cov3, key="dw0d_grey_cov_chart")
+        c_col1, c_col2 = st.columns(2)
+        with c_col1:
+            fig_cov3 = go.Figure()
+            fig_cov3.add_trace(go.Scatter(
+                x=df_grey["時間"], y=df_grey["黑雛菊覆蓋率"],
+                mode="lines", line=dict(color="#334155", width=3), name="黑雛菊 (保溫)"
+            ))
+            fig_cov3.add_trace(go.Scatter(
+                x=df_grey["時間"], y=df_grey["白雛菊覆蓋率"],
+                mode="lines", line=dict(color="#f8fafc", width=3), name="白雛菊 (散熱)"
+            ))
+            fig_cov3.add_trace(go.Scatter(
+                x=df_grey["時間"], y=df_grey["灰雛菊覆蓋率"],
+                mode="lines", line=dict(color="#94a3b8", width=3, dash="dash"), name="灰雛菊 (中性競爭者)"
+            ))
+            fig_cov3.add_trace(go.Scatter(
+                x=df_grey["時間"], y=df_grey["裸地覆蓋率"],
+                mode="lines", line=dict(color="#d97706", width=1.5, dash="dot"), name="裸地資源"
+            ))
+            fig_cov3.update_layout(get_plotly_layout("三物種覆蓋率時間消長", "時間", "覆蓋率 (0~1)", y_range=[0.0, 1.0]))
+            render_plotly_chart(fig_cov3, key="dw0d_grey_cov_chart")
 
-    with c_col2:
-        fig_temp3 = go.Figure()
-        fig_temp3.add_trace(go.Scatter(
-            x=df_grey["時間"], y=df_grey["行星平均溫度 (℃)"],
-            mode="lines", line=dict(color="#22c55e", width=3), name="行星平均溫度 $T_p$"
-        ))
-        fig_temp3.add_trace(go.Scatter(
-            x=df_grey["時間"], y=df_grey["灰雛菊溫度 (℃)"],
-            mode="lines", line=dict(color="#94a3b8", width=2, dash="dash"), name="灰雛菊局地溫度 $T_g$"
-        ))
-        fig_temp3.add_hline(y=t_nobio, line_dash="dash", line_color="#ef4444", annotation_text=f"無生物基線 ({t_nobio:.1f}℃)")
-        fig_temp3.update_layout(get_plotly_layout("行星平均溫度與物種局部溫度", "時間", "溫度 (℃)", y_range=[0.0, 50.0]))
-        render_plotly_chart(fig_temp3, key="dw0d_grey_temp_chart")
+        with c_col2:
+            fig_temp3 = go.Figure()
+            fig_temp3.add_trace(go.Scatter(
+                x=df_grey["時間"], y=df_grey["行星平均溫度 (℃)"],
+                mode="lines", line=dict(color="#22c55e", width=3), name="行星平均溫度 $T_p$"
+            ))
+            fig_temp3.add_trace(go.Scatter(
+                x=df_grey["時間"], y=df_grey["灰雛菊溫度 (℃)"],
+                mode="lines", line=dict(color="#94a3b8", width=2, dash="dash"), name="灰雛菊局地溫度 $T_g$"
+            ))
+            fig_temp3.add_hline(y=t_nobio, line_dash="dash", line_color="#ef4444", annotation_text=f"無生物基線 ({t_nobio:.1f}℃)")
+            fig_temp3.update_layout(get_plotly_layout("行星平均溫度與物種局部溫度", "時間", "溫度 (℃)", y_range=[0.0, 50.0]))
+            render_plotly_chart(fig_temp3, key="dw0d_grey_temp_chart")
 
 # Tab 2: Luminosity Comparison
 with tab2:
@@ -225,6 +222,5 @@ with tab3:
         mime="text/csv"
     )
 
-# Execute dynamic animation step at end of page
-execute_dynamic_step(param_specs_dwg, page_prefix="daisygrey0d")
+
 

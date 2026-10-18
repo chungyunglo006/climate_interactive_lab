@@ -2,6 +2,7 @@
 Interactive 60 FPS Client-Side Canvas Engine for 0D Energy Balance Model.
 Ensures coordinate axes, gridlines, and thresholds are rendered ONCE on a static layer,
 while simulation traces update smoothly via requestAnimationFrame at 60 FPS without any flickering.
+Includes synchronized sliders + direct numeric input for all parameters and scenario presets.
 """
 
 def get_interactive_ebm0d_html(
@@ -33,18 +34,36 @@ body {{
 }}
 
 .control-panel {{
-    background: linear-gradient(135deg, rgba(21, 28, 44, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(21, 28, 44, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
     border: 1px solid rgba(0, 229, 255, 0.25);
     border-radius: 14px;
-    padding: 16px 20px;
+    padding: 18px 20px;
     margin-bottom: 18px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
 }}
 
+.panel-header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}}
+
+.panel-title {{
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+
 .ctrl-grid {{
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px 20px;
     align-items: center;
 }}
 
@@ -59,7 +78,9 @@ body {{
     color: #94a3b8;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
+    display: flex;
+    justify-content: space-between;
 }}
 
 .ctrl-input-row {{
@@ -77,24 +98,32 @@ input[type="range"] {{
     border-radius: 3px;
 }}
 
-.val-badge {{
+.val-input {{
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: #00e5ff;
-    min-width: 65px;
+    width: 85px;
     text-align: right;
-    background: rgba(0, 229, 255, 0.1);
-    padding: 3px 8px;
+    background: rgba(0, 229, 255, 0.08);
+    padding: 4px 8px;
     border-radius: 6px;
-    border: 1px solid rgba(0, 229, 255, 0.25);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    outline: none;
+    transition: all 0.2s;
+}}
+
+.val-input:focus {{
+    border-color: #00e5ff;
+    background: rgba(0, 229, 255, 0.18);
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
 }}
 
 .action-row {{
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    margin-top: 14px;
+    margin-top: 16px;
     padding-top: 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     align-items: center;
@@ -131,7 +160,7 @@ input[type="range"] {{
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }}
 
-select, input[type="number"] {{
+select, input[type="number"].inline-input {{
     background: #0f172a;
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #f8fafc;
@@ -141,7 +170,7 @@ select, input[type="number"] {{
     outline: none;
 }}
 
-select:focus, input[type="number"]:focus {{
+select:focus, input[type="number"].inline-input:focus {{
     border-color: #00e5ff;
 }}
 
@@ -218,7 +247,7 @@ select:focus, input[type="number"]:focus {{
 }}
 
 .chart-title {{
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: #f8fafc;
 }}
@@ -275,33 +304,60 @@ canvas {{
 <body>
 
 <div class="control-panel">
+    <div class="panel-header">
+        <div class="panel-title">⚙️ 整合式物理參數面板 (滑桿 + 精確數值直接輸入)</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.8rem; color: #94a3b8;">🎯 預設情境:</span>
+            <select id="sel_preset">
+                <option value="modern" selected>現今溫暖地球 (Modern Earth)</option>
+                <option value="snowball">冰球雪球地球 (Snowball Earth)</option>
+                <option value="tipping">第一臨界點失控崩潰 (~1288.6 W/m²)</option>
+                <option value="hot">高太陽輻射超溫暖態 (S₀=1600 W/m²)</option>
+            </select>
+        </div>
+    </div>
+
     <div class="ctrl-grid">
         <div class="ctrl-item">
-            <span class="ctrl-label">太陽常數 S₀ (W/m²)</span>
+            <span class="ctrl-label"><span>太陽常數 S₀</span><span>W/m²</span></span>
             <div class="ctrl-input-row">
                 <input type="range" id="slider_s0" min="800" max="2000" step="1" value="{s0}">
-                <span class="val-badge" id="badge_s0">{s0:.1f}</span>
+                <input type="number" class="val-input" id="num_s0" min="800" max="2000" step="1" value="{s0}">
             </div>
         </div>
         <div class="ctrl-item">
-            <span class="ctrl-label">初始溫度 T_init (K)</span>
+            <span class="ctrl-label"><span>初始溫度 T_init</span><span>K</span></span>
             <div class="ctrl-input-row">
                 <input type="range" id="slider_tinit" min="200" max="320" step="0.5" value="{t_init}">
-                <span class="val-badge" id="badge_tinit">{t_init:.1f}</span>
+                <input type="number" class="val-input" id="num_tinit" min="200" max="320" step="0.5" value="{t_init}">
             </div>
         </div>
         <div class="ctrl-item">
-            <span class="ctrl-label">有效發射率 ε (溫室效應)</span>
+            <span class="ctrl-label"><span>有效發射率 ε (溫室效應)</span><span>比例</span></span>
             <div class="ctrl-input-row">
                 <input type="range" id="slider_eps" min="0.4" max="0.9" step="0.01" value="{epsilon}">
-                <span class="val-badge" id="badge_eps">{epsilon:.2f}</span>
+                <input type="number" class="val-input" id="num_eps" min="0.4" max="0.9" step="0.01" value="{epsilon}">
             </div>
         </div>
         <div class="ctrl-item">
-            <span class="ctrl-label">冰雪反照率 α_ice</span>
+            <span class="ctrl-label"><span>冰雪反照率 α_ice</span><span>反射比</span></span>
             <div class="ctrl-input-row">
                 <input type="range" id="slider_aice" min="0.4" max="0.8" step="0.01" value="{alpha_ice}">
-                <span class="val-badge" id="badge_aice">{alpha_ice:.2f}</span>
+                <input type="number" class="val-input" id="num_aice" min="0.4" max="0.8" step="0.01" value="{alpha_ice}">
+            </div>
+        </div>
+        <div class="ctrl-item">
+            <span class="ctrl-label"><span>陸地反照率 α_land</span><span>反射比</span></span>
+            <div class="ctrl-input-row">
+                <input type="range" id="slider_aland" min="0.1" max="0.5" step="0.01" value="{alpha_land}">
+                <input type="number" class="val-input" id="num_aland" min="0.1" max="0.5" step="0.01" value="{alpha_land}">
+            </div>
+        </div>
+        <div class="ctrl-item">
+            <span class="ctrl-label"><span>冰雪臨界溫 T_ice</span><span>K</span></span>
+            <div class="ctrl-input-row">
+                <input type="range" id="slider_tice" min="240" max="275" step="0.5" value="{t_ice}">
+                <input type="number" class="val-input" id="num_tice" min="240" max="275" step="0.5" value="{t_ice}">
             </div>
         </div>
     </div>
@@ -326,7 +382,7 @@ canvas {{
         </select>
 
         <span style="color: #64748b;">速率 (Δ/幀):</span>
-        <input type="number" id="num_anim_speed" value="0.8" step="0.1" min="0.05" max="5.0" style="width: 75px;">
+        <input type="number" class="inline-input" id="num_anim_speed" value="0.8" step="0.1" min="0.05" max="5.0" style="width: 75px;">
     </div>
 </div>
 
@@ -394,8 +450,6 @@ canvas {{
 const SIGMA = 5.670374e-8;
 const SECONDS_PER_YEAR = 3.154e7;
 const C_OCEAN = 2.09e8;
-const T_ICE = {t_ice};
-const T_LAND = {t_land};
 const DT = {dt};
 const ITERA = {itera};
 
@@ -406,6 +460,8 @@ let state = {{
     epsilon: {epsilon},
     alpha_ice: {alpha_ice},
     alpha_land: {alpha_land},
+    t_ice: {t_ice},
+    t_land: {t_land},
     isPlaying: false,
     pingPongDir: 1,
     simData: null
@@ -413,14 +469,18 @@ let state = {{
 
 // DOM Elements
 const sliderS0 = document.getElementById('slider_s0');
+const numS0 = document.getElementById('num_s0');
 const sliderTinit = document.getElementById('slider_tinit');
+const numTinit = document.getElementById('num_tinit');
 const sliderEps = document.getElementById('slider_eps');
+const numEps = document.getElementById('num_eps');
 const sliderAice = document.getElementById('slider_aice');
-
-const badgeS0 = document.getElementById('badge_s0');
-const badgeTinit = document.getElementById('badge_tinit');
-const badgeEps = document.getElementById('badge_eps');
-const badgeAice = document.getElementById('badge_aice');
+const numAice = document.getElementById('num_aice');
+const sliderAland = document.getElementById('slider_aland');
+const numAland = document.getElementById('num_aland');
+const sliderTice = document.getElementById('slider_tice');
+const numTice = document.getElementById('num_tice');
+const selPreset = document.getElementById('sel_preset');
 
 const btnTogglePlay = document.getElementById('btn_toggle_play');
 const btnReset = document.getElementById('btn_reset');
@@ -448,7 +508,6 @@ const ctxFg1 = fg1.getContext('2d');
 const ctxBg2 = bg2.getContext('2d');
 const ctxFg2 = fg2.getContext('2d');
 
-// DPR Canvas resizing
 let width = 0, height = 0;
 const margin = {{ left: 55, right: 25, top: 25, bottom: 40 }};
 
@@ -472,10 +531,10 @@ function resizeCanvases() {{
 }}
 
 // Albedo function
-function getAlbedo(T, aIce, aLand) {{
-    if (T <= T_ICE) return aIce;
-    if (T >= T_LAND) return aLand;
-    return aIce + (aLand - aIce) * (T - T_ICE) / (T_LAND - T_ICE);
+function getAlbedo(T, aIce, aLand, tIce, tLand) {{
+    if (T <= tIce) return aIce;
+    if (T >= tLand) return aLand;
+    return aIce + (aLand - aIce) * (T - tIce) / (tLand - tIce);
 }}
 
 // 0D EBM ODE Integration
@@ -490,11 +549,13 @@ function runSimulation() {{
     let T = state.t_init;
     const aIce = state.alpha_ice;
     const aLand = state.alpha_land;
+    const tIce = state.t_ice;
+    const tLand = state.t_land;
     const s0 = state.s0;
     const eps = state.epsilon;
 
     for (let step = 0; step <= ITERA; step++) {{
-        const a = getAlbedo(T, aIce, aLand);
+        const a = getAlbedo(T, aIce, aLand, tIce, tLand);
         const r_in = (s0 / 4.0) * (1.0 - a);
         const r_out = eps * SIGMA * Math.pow(T, 4);
         const imb = r_in - r_out;
@@ -530,7 +591,6 @@ function drawStaticBackgrounds() {{
     ctxBg1.fillStyle = 'rgba(15, 23, 42, 0.45)';
     ctxBg1.fillRect(margin.left, margin.top, plotW, plotH);
 
-    // Ticks & Grid Y: -40 to 30 degC
     const yMin1 = -45, yMax1 = 35;
     const yTicks1 = [-40, -30, -20, -10, 0, 10, 20, 30];
 
@@ -551,7 +611,7 @@ function drawStaticBackgrounds() {{
     }});
 
     // Critical threshold dashed lines
-    const yTice = margin.top + plotH * (1.0 - ((T_ICE - 273.15) - yMin1) / (yMax1 - yMin1));
+    const yTice = margin.top + plotH * (1.0 - ((state.t_ice - 273.15) - yMin1) / (yMax1 - yMin1));
     ctxBg1.save();
     ctxBg1.setLineDash([5, 4]);
     ctxBg1.strokeStyle = '#38bdf8';
@@ -563,7 +623,7 @@ function drawStaticBackgrounds() {{
     ctxBg1.textAlign = 'left';
     ctxBg1.fillText('冰封臨界線 -10.1℃', margin.left + 8, yTice - 7);
 
-    const yTland = margin.top + plotH * (1.0 - ((T_LAND - 273.15) - yMin1) / (yMax1 - yMin1));
+    const yTland = margin.top + plotH * (1.0 - ((state.t_land - 273.15) - yMin1) / (yMax1 - yMin1));
     ctxBg1.strokeStyle = '#4ade80';
     ctxBg1.beginPath();
     ctxBg1.moveTo(margin.left, yTland);
@@ -573,7 +633,6 @@ function drawStaticBackgrounds() {{
     ctxBg1.fillText('無冰臨界線 9.9℃', margin.left + 8, yTland - 7);
     ctxBg1.restore();
 
-    // X Ticks: 0 to itera*dt (e.g. 0 to 20 yrs)
     const xMax = ITERA * DT;
     const xStep = Math.max(2, Math.round(xMax / 6));
     ctxBg1.textAlign = 'center';
@@ -588,7 +647,6 @@ function drawStaticBackgrounds() {{
         ctxBg1.fillText(xVal + '年', x, margin.top + plotH + 8);
     }}
 
-    // Axis Border lines
     ctxBg1.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctxBg1.strokeRect(margin.left, margin.top, plotW, plotH);
 
@@ -648,7 +706,6 @@ function renderDynamicTraces() {{
     ctxFg1.rect(margin.left, margin.top, plotW, plotH);
     ctxFg1.clip();
 
-    // Glowing Neon Stroke
     ctxFg1.shadowBlur = 8;
     ctxFg1.shadowColor = '#00e5ff';
     ctxFg1.strokeStyle = '#00e5ff';
@@ -663,7 +720,6 @@ function renderDynamicTraces() {{
     }}
     ctxFg1.stroke();
 
-    // Draw endpoint pulse marker
     const endX = margin.left + plotW;
     const endY = margin.top + plotH * (1.0 - (d.finalTC - yMin1) / (yMax1 - yMin1));
     ctxFg1.fillStyle = '#00e5ff';
@@ -787,27 +843,24 @@ function animationStep() {{
     }}
 
     state[target] = curVal;
+    syncControls(target, curVal);
 
-    // Sync input sliders & badges
-    if (target === 's0') {{
-        sliderS0.value = curVal;
-        badgeS0.innerText = curVal.toFixed(1);
-    }} else if (target === 't_init') {{
-        sliderTinit.value = curVal;
-        badgeTinit.innerText = curVal.toFixed(1);
-    }} else if (target === 'eps') {{
-        sliderEps.value = curVal;
-        badgeEps.innerText = curVal.toFixed(2);
-    }} else if (target === 'alpha_ice') {{
-        sliderAice.value = curVal;
-        badgeAice.innerText = curVal.toFixed(2);
-    }}
-
-    // Integrate & render smoothly
     runSimulation();
     renderDynamicTraces();
 
     animFrameId = requestAnimationFrame(animationStep);
+}}
+
+function syncControls(target, val) {{
+    if (target === 's0') {{
+        sliderS0.value = val; numS0.value = Math.round(val);
+    }} else if (target === 't_init') {{
+        sliderTinit.value = val; numTinit.value = val.toFixed(1);
+    }} else if (target === 'eps') {{
+        sliderEps.value = val; numEps.value = val.toFixed(2);
+    }} else if (target === 'alpha_ice') {{
+        sliderAice.value = val; numAice.value = val.toFixed(2);
+    }}
 }}
 
 function togglePlay() {{
@@ -823,48 +876,63 @@ function togglePlay() {{
     }}
 }}
 
-// User Input Listeners
-sliderS0.addEventListener('input', e => {{
-    state.s0 = parseFloat(e.target.value);
-    badgeS0.innerText = state.s0.toFixed(1);
-    runSimulation();
-    renderDynamicTraces();
-}});
+// 2-Way Sync Helpers
+function bindSync(slider, numInput, stateKey, isInt=false) {{
+    slider.addEventListener('input', e => {{
+        const v = isInt ? parseInt(e.target.value) : parseFloat(e.target.value);
+        numInput.value = v;
+        state[stateKey] = v;
+        runSimulation();
+        renderDynamicTraces();
+    }});
 
-sliderTinit.addEventListener('input', e => {{
-    state.t_init = parseFloat(e.target.value);
-    badgeTinit.innerText = state.t_init.toFixed(1);
-    runSimulation();
-    renderDynamicTraces();
-}});
+    numInput.addEventListener('input', e => {{
+        const v = isInt ? parseInt(e.target.value) : parseFloat(e.target.value);
+        if (!isNaN(v)) {{
+            slider.value = v;
+            state[stateKey] = v;
+            runSimulation();
+            renderDynamicTraces();
+        }}
+    }});
+}}
 
-sliderEps.addEventListener('input', e => {{
-    state.epsilon = parseFloat(e.target.value);
-    badgeEps.innerText = state.epsilon.toFixed(2);
-    runSimulation();
-    renderDynamicTraces();
-}});
-
-sliderAice.addEventListener('input', e => {{
-    state.alpha_ice = parseFloat(e.target.value);
-    badgeAice.innerText = state.alpha_ice.toFixed(2);
-    runSimulation();
-    renderDynamicTraces();
-}});
+bindSync(sliderS0, numS0, 's0', true);
+bindSync(sliderTinit, numTinit, 't_init', false);
+bindSync(sliderEps, numEps, 'epsilon', false);
+bindSync(sliderAice, numAice, 'alpha_ice', false);
+bindSync(sliderAland, numAland, 'alpha_land', false);
+bindSync(sliderTice, numTice, 't_ice', false);
 
 btnTogglePlay.addEventListener('click', togglePlay);
 
-btnReset.addEventListener('click', () => {{
-    state.s0 = 1368.0;
-    state.t_init = 288.0;
-    state.epsilon = 0.62;
-    state.alpha_ice = 0.60;
-    sliderS0.value = 1368.0; badgeS0.innerText = '1368.0';
-    sliderTinit.value = 288.0; badgeTinit.innerText = '288.0';
-    sliderEps.value = 0.62; badgeEps.innerText = '0.62';
-    sliderAice.value = 0.60; badgeAice.innerText = '0.60';
+// Scenario Presets
+selPreset.addEventListener('change', e => {{
+    const p = e.target.value;
+    if (p === 'modern') {{
+        setParams({{ s0: 1368.0, t_init: 288.0, eps: 0.62, aice: 0.60, aland: 0.30 }});
+    }} else if (p === 'snowball') {{
+        setParams({{ s0: 1200.0, t_init: 230.0, eps: 0.62, aice: 0.60, aland: 0.30 }});
+    }} else if (p === 'tipping') {{
+        setParams({{ s0: 1288.6, t_init: 280.0, eps: 0.62, aice: 0.60, aland: 0.30 }});
+    }} else if (p === 'hot') {{
+        setParams({{ s0: 1600.0, t_init: 295.0, eps: 0.62, aice: 0.60, aland: 0.30 }});
+    }}
+}});
+
+function setParams(cfg) {{
+    if (cfg.s0 !== undefined) {{ state.s0 = cfg.s0; sliderS0.value = cfg.s0; numS0.value = cfg.s0; }}
+    if (cfg.t_init !== undefined) {{ state.t_init = cfg.t_init; sliderTinit.value = cfg.t_init; numTinit.value = cfg.t_init; }}
+    if (cfg.eps !== undefined) {{ state.epsilon = cfg.eps; sliderEps.value = cfg.eps; numEps.value = cfg.eps; }}
+    if (cfg.aice !== undefined) {{ state.alpha_ice = cfg.aice; sliderAice.value = cfg.aice; numAice.value = cfg.aice; }}
+    if (cfg.aland !== undefined) {{ state.alpha_land = cfg.aland; sliderAland.value = cfg.aland; numAland.value = cfg.aland; }}
     runSimulation();
     renderDynamicTraces();
+}}
+
+btnReset.addEventListener('click', () => {{
+    selPreset.value = 'modern';
+    setParams({{ s0: 1368.0, t_init: 288.0, eps: 0.62, aice: 0.60, aland: 0.30 }});
 }});
 
 // Interactive Tooltip Hover on Chart 1

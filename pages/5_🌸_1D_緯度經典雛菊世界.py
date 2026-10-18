@@ -11,13 +11,11 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart,
-    render_sync_input,
-    set_param_value,
-    render_dynamic_controller,
-    execute_dynamic_step
+    render_plotly_chart
 )
 from models.daisy_1d import run_daisyworld_1d
+import streamlit.components.v1 as components
+from utils.interactive_daisy_1d import get_interactive_daisy1d_html
 
 st.set_page_config(
     page_title="1D 緯度經典雛菊世界 | 獨立實驗網站",
@@ -30,66 +28,43 @@ apply_custom_styles()
 render_hero(
     title="一維緯度經典雛菊世界 (1D Latitudinal Daisyworld)",
     subtitle="將雛菊世界延伸至空間維度：探索「赤道散熱白雛菊」與「極區吸熱黑雛菊」的空間生態位分化 (Niche Differentiation) 與緯度氣候調節。",
-    badges=["1D Daisyworld", "Spatial Niche Differentiation", "Latitudinal Heat Transport", "Planetary Zonation"]
+    badges=["1D Daisyworld", "Spatial Niche Differentiation", "Latitudinal Heat Transport", "Planetary Zonation", "60 FPS Canvas"]
 )
 
-# Sidebar Parameters
-st.sidebar.header("⚙️ 1D 雛菊空間參數")
-
-if "daisy1d_preset" not in st.session_state:
+# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
 with st.sidebar:
-    st.header("⚙️ 1D 雛菊生態參數")
+    st.header("🌸 1D 緯度雛菊實驗室")
+    st.markdown("""
+    **實驗特色**
+    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
+    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
+    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
+    
+    ---
+    **空間生態位分化機制**
+    - **赤道低緯區**：接受強烈日射，白雛菊大面積繁茂，藉由高反照率反射陽光，防止熱帶過熱。
+    - **極地高緯區**：接受傾斜微弱日射，黑雛菊繁茂生長，藉由低反照率吸收稀少熱量，減輕極區嚴寒。
+    - **大氣擴散傳輸 ($K$)**：透過經向熱輸送將赤道多餘熱量平流輸送至兩極，與生物反饋共同均溫全球。
+    
+    ---
+    **參考基準**
+    - 太陽常數 $S_0$：$2100$ W/m²
+    - 大氣擴散係數 $K$：$3.87$ W/m²/℃
+    - 最適生長溫度：$22.5$ ℃
+    """)
 
-    if "daisy1d_preset" not in st.session_state:
-        st.session_state["daisy1d_preset"] = "標準緯度分化 (S0=2100, L=1.0, K=3.87)"
-
-    preset = st.selectbox(
-        "🎯 預設情境 (Scenario Presets)",
-        ["自訂參數 (Custom)", "標準緯度分化 (S0=2100, L=1.0, K=3.87)", "低日照極區保溫主導 (S0=1800)", "高日照赤道降溫主導 (S0=2400)", "弱大氣擴散局部孤立 (K=1.5)"],
-        index=1
-    )
-
-    if preset != st.session_state["daisy1d_preset"] and preset != "自訂參數 (Custom)":
-        st.session_state["daisy1d_preset"] = preset
-        if preset == "標準緯度分化 (S0=2100, L=1.0, K=3.87)":
-            set_param_value("s0_1dw", 2100.0)
-            set_param_value("l_val_1dw", 1.0)
-            set_param_value("k_diff_1dw", 3.87)
-        elif preset == "低日照極區保溫主導 (S0=1800)":
-            set_param_value("s0_1dw", 1800.0)
-            set_param_value("l_val_1dw", 1.0)
-            set_param_value("k_diff_1dw", 3.87)
-        elif preset == "高日照赤道降溫主導 (S0=2400)":
-            set_param_value("s0_1dw", 2400.0)
-            set_param_value("l_val_1dw", 1.0)
-            set_param_value("k_diff_1dw", 3.87)
-        elif preset == "弱大氣擴散局部孤立 (K=1.5)":
-            set_param_value("s0_1dw", 2100.0)
-            set_param_value("l_val_1dw", 1.0)
-            set_param_value("k_diff_1dw", 1.5)
-
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dw", 1400.0, 2800.0, 2100.0, 50.0, format="%.1f")
-    l_val = render_sync_input("太陽光度因子 L", "l_val_1dw", 0.6, 1.6, 1.0, 0.02, format="%.2f")
-    k_diff = render_sync_input("大氣熱擴散傳遞 K (W/m²/℃)", "k_diff_1dw", 0.5, 9.0, 3.87, 0.1, format="%.2f")
-
-    with st.expander("🔬 生態與 Budyko 參數 (滑桿 + 精確數值)", expanded=False):
-        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
-        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_1dw", 0.1, 0.4, 0.25, 0.02, format="%.2f")
-        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_1dw", 0.3, 0.7, 0.50, 0.02, format="%.2f")
-        q_val = render_sync_input("局地微氣候反饋 q (℃)", "q_val_1dw", 5.0, 40.0, 20.0, 1.0, format="%.1f")
-        gamma_val = render_sync_input("死亡率 γ", "gamma_val_1dw", 0.05, 0.6, 0.3, 0.02, format="%.2f")
-        a_param = render_sync_input("Budyko A", "a_param_1dw", 180.0, 260.0, 230.0, 5.0, format="%.1f")
-        b_param = render_sync_input("Budyko B", "b_param_1dw", 1.5, 3.5, 2.17, 0.05, format="%.2f")
-        itera = render_sync_input("總迭代步數", "itera_1dw", 30, 300, 150, 25, is_int=True)
-
-    # Dynamic Sweeper Controller
-    param_specs_1dw = {
-        "太陽常數 S₀": {"key": "s0_1dw", "min": 1400.0, "max": 2800.0, "step": 50.0, "unit": "W/m²"},
-        "太陽光度 L": {"key": "l_val_1dw", "min": 0.6, "max": 1.6, "step": 0.02, "unit": ""},
-        "大氣擴散係數 K": {"key": "k_diff_1dw", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
-        "微氣候反饋 q": {"key": "q_val_1dw", "min": 5.0, "max": 40.0, "step": 1.0, "unit": "℃"}
-    }
-    render_dynamic_controller(param_specs_1dw, page_prefix="daisy1d")
+# Default parameters
+s0 = 2100.0
+l_val = 1.0
+k_diff = 3.87
+alpha_w = 0.75
+alpha_b = 0.25
+alpha_u = 0.50
+q_val = 20.0
+gamma_val = 0.30
+a_param = 230.0
+b_param = 2.17
+itera = 150
 
 with st.expander("📐 點擊展開：1D 雛菊世界生態與氣候耦合數學架構"):
     st.markdown(r"""
@@ -122,43 +97,61 @@ final_step = history_1d[-1]
 # Tab 1: Geographic Niche Zonation
 with tab1:
     st.subheader("1D 經典雛菊世界：空間生態位分化 (Niche Differentiation)")
-    st.markdown("""
-    - **高緯度極區（冷）**：黑雛菊覆蓋率顯著攀升，吸收更多日射防止極區冰封。
-    - **低緯度赤道（熱）**：白雛菊覆蓋率大量增加，反射過強日照，防止熱帶過熱。
-    """)
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        render_stat_card("全球加權均溫", f"{final_step['mean_t']:.2f} ℃")
-    with col2:
-        render_stat_card("赤道 (6°N) 白雛菊覆蓋率", f"{final_step['aw'][-1]*100:.1f} %")
-    with col3:
-        render_stat_card("極區 (85°N) 黑雛菊覆蓋率", f"{final_step['ab'][0]*100:.1f} %")
-    with col4:
-        render_stat_card("全域平均反照率", f"{np.mean(final_step['alpha_p']):.3f}")
+    render_engine = st.radio(
+        "圖表渲染模式",
+        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        horizontal=True,
+        key="daisy1d_engine_choice"
+    )
 
-    fig_zonation = go.Figure()
-    fig_zonation.add_trace(go.Scatter(
-        x=lats_1d, y=final_step["ab"],
-        mode="lines+markers", marker=dict(size=8, color="#475569"),
-        line=dict(color="#475569", width=3), name="黑雛菊覆蓋率 (極區優勢保溫)"
-    ))
-    fig_zonation.add_trace(go.Scatter(
-        x=lats_1d, y=final_step["aw"],
-        mode="lines+markers", marker=dict(size=8, color="#f8fafc"),
-        line=dict(color="#f8fafc", width=3), name="白雛菊覆蓋率 (赤道優勢降溫)"
-    ))
-    fig_zonation.add_trace(go.Scatter(
-        x=lats_1d, y=final_step["au"],
-        mode="lines+markers", marker=dict(size=7, color="#d97706"),
-        line=dict(color="#d97706", width=2, dash="dash"), name="裸地覆蓋率"
-    ))
-    fig_zonation.update_layout(get_plotly_layout(
-        "各緯度最終平衡覆蓋率分佈 (極區黑雛菊 vs 赤道白雛菊)",
-        "緯度 (度)", "覆蓋率 (0~1)", height=500,
-        x_range=[-90, 90], y_range=[0.0, 1.0]
-    ))
-    render_plotly_chart(fig_zonation, key="dw1d_zonation_chart")
+    if "60 FPS" in render_engine:
+        components.html(
+            get_interactive_daisy1d_html(
+                s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
+                q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera
+            ),
+            height=820,
+            scrolling=False
+        )
+    else:
+        st.markdown("""
+        - **高緯度極區（冷）**：黑雛菊覆蓋率顯著攀升，吸收更多日射防止極區冰封。
+        - **低緯度赤道（熱）**：白雛菊覆蓋率大量增加，反射過強日照，防止熱帶過熱。
+        """)
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            render_stat_card("全球加權均溫", f"{final_step['mean_t']:.2f} ℃")
+        with col2:
+            render_stat_card("赤道 (6°N) 白雛菊覆蓋率", f"{final_step['aw'][-1]*100:.1f} %")
+        with col3:
+            render_stat_card("極區 (85°N) 黑雛菊覆蓋率", f"{final_step['ab'][0]*100:.1f} %")
+        with col4:
+            render_stat_card("全域平均反照率", f"{np.mean(final_step['alpha_p']):.3f}")
+
+        fig_zonation = go.Figure()
+        fig_zonation.add_trace(go.Scatter(
+            x=lats_1d, y=final_step["ab"],
+            mode="lines+markers", marker=dict(size=8, color="#475569"),
+            line=dict(color="#475569", width=3), name="黑雛菊覆蓋率 (極區優勢保溫)"
+        ))
+        fig_zonation.add_trace(go.Scatter(
+            x=lats_1d, y=final_step["aw"],
+            mode="lines+markers", marker=dict(size=8, color="#f8fafc"),
+            line=dict(color="#f8fafc", width=3), name="白雛菊覆蓋率 (赤道優勢降溫)"
+        ))
+        fig_zonation.add_trace(go.Scatter(
+            x=lats_1d, y=final_step["au"],
+            mode="lines+markers", marker=dict(size=7, color="#d97706"),
+            line=dict(color="#d97706", width=2, dash="dash"), name="裸地覆蓋率"
+        ))
+        fig_zonation.update_layout(get_plotly_layout(
+            "各緯度最終平衡覆蓋率分佈 (極區黑雛菊 vs 赤道白雛菊)",
+            "緯度 (度)", "覆蓋率 (0~1)", height=500,
+            x_range=[-90, 90], y_range=[0.0, 1.0]
+        ))
+        render_plotly_chart(fig_zonation, key="dw1d_zonation_chart")
 
 # Tab 2: Temperature Regulation
 with tab2:
@@ -247,6 +240,5 @@ with tab4:
         mime="text/csv"
     )
 
-# Execute dynamic animation step at end of page
-execute_dynamic_step(param_specs_1dw, page_prefix="daisy1d")
+
 
