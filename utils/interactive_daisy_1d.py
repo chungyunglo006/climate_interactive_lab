@@ -600,18 +600,18 @@ function runSimulation() {{
     const fullTemp = [], fullDead = [], fullAw = [], fullAb = [], fullAu = [];
     for (let i = 0; i < nLat; i++) {{
         fullTemp.push(temp[i]); fullDead.push(tempNobio[i]);
-        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(au[i]);
+        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(1.0 - aw[i] - ab[i]);
     }}
     for (let i = nLat - 1; i >= 0; i--) {{
         fullTemp.push(temp[i]); fullDead.push(tempNobio[i]);
-        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(au[i]);
+        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(1.0 - aw[i] - ab[i]);
     }}
 
     // Northern hemisphere only [6 to 85] (Equator to North Pole)
     const northTemp = [], northDead = [], northAw = [], northAb = [], northAu = [];
     for (let i = nLat - 1; i >= 0; i--) {{
         northTemp.push(temp[i]); northDead.push(tempNobio[i]);
-        northAw.push(aw[i]); northAb.push(ab[i]); northAu.push(au[i]);
+        northAw.push(aw[i]); northAb.push(ab[i]); northAu.push(1.0 - aw[i] - ab[i]);
     }}
 
     const meanT = temp.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
