@@ -130,67 +130,93 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "❄️ 4. 冰期崩潰動態模擬 (Transient Collapse)"
 ])
 
+import streamlit.components.v1 as components
+from utils.interactive_ebm_0d import get_interactive_ebm0d_html
+
 # Tab 1: Time Series Evolution
 with tab1:
     st.subheader("全球平均溫度與輻射通量演化")
-    df_sim = run_ebm(
+    
+    render_engine = st.radio(
+        "圖表渲染模式",
+        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，線段平滑變動，零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        horizontal=True,
+        key="ebm0d_engine_choice"
+    )
+
+    if "60 FPS" in render_engine:
+        components.html(
+            get_interactive_ebm0d_html(
+                s0=s0, t_init=t_init, alpha_ice=alpha_ice, alpha_land=alpha_land,
+                t_ice=t_ice, t_land=t_land, epsilon=epsilon, dt=dt, itera=itera
+            ),
+            height=760,
+            scrolling=False
+        )
+    else:
+        df_sim = run_ebm(
+            S0=s0, alpha_ice=alpha_ice, alpha_land=alpha_land,
+            T_ice=t_ice, T_land=t_land, epsilon=epsilon,
+            T_init=t_init, dt=dt, itera=itera
+        )
+
+        final_row = df_sim.iloc[-1]
+
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
+            render_stat_card("最終平衡溫度", f"{final_row['溫度 (K)']:.2f} K", f"{final_row['溫度 (℃)']:.2f} ℃")
+        with col_m2:
+            render_stat_card("最終行星反照率", f"{final_row['反照率 (Albedo)']:.3f}")
+        with col_m3:
+            render_stat_card("入射 / 出射能量", f"{final_row['入射能量 (W/m²)']:.1f} W/m²", f"出射: {final_row['出射能量 (W/m²)']:.1f} W/m²")
+        with col_m4:
+            imbalance_val = final_row['能量不平衡量 (W/m²)']
+            status = "已達完美平衡" if abs(imbalance_val) < 0.01 else "尚未完全收斂"
+            render_stat_card("淨輻射不平衡量", f"{imbalance_val:.4f} W/m²", status)
+
+        chart_c1, chart_c2 = st.columns(2)
+        with chart_c1:
+            fig_temp = go.Figure()
+            fig_temp.add_trace(go.Scatter(
+                x=df_sim["時間 (年)"], y=df_sim["溫度 (℃)"],
+                mode="lines+markers", marker=dict(size=4),
+                line=dict(color="#00e5ff", width=2.5), name="地表溫度 (℃)"
+            ))
+            fig_temp.add_hline(y=t_ice - 273.15, line_dash="dash", line_color="#38bdf8", annotation_text=f"冰封臨界溫 {t_ice-273.15:.1f}℃")
+            fig_temp.add_hline(y=t_land - 273.15, line_dash="dash", line_color="#4ade80", annotation_text=f"無冰臨界溫 {t_land-273.15:.1f}℃")
+            fig_temp.update_layout(get_plotly_layout(
+                "溫度隨時間演化歷程", "時間 (年)", "溫度 (℃)",
+                height=480, x_range=[0, itera * dt], y_range=[-45, 35]
+            ))
+            render_plotly_chart(fig_temp, key="ebm0d_temp_chart")
+
+        with chart_c2:
+            fig_rad = go.Figure()
+            fig_rad.add_trace(go.Scatter(
+                x=df_sim["時間 (年)"], y=df_sim["入射能量 (W/m²)"],
+                mode="lines", line=dict(color="#f59e0b", width=2), name="吸收入射太陽輻射 $R_{in}$"
+            ))
+            fig_rad.add_trace(go.Scatter(
+                x=df_sim["時間 (年)"], y=df_sim["出射能量 (W/m²)"],
+                mode="lines", line=dict(color="#ef4444", width=2), name="釋放長波輻射 $R_{out}$"
+            ))
+            fig_rad.add_trace(go.Scatter(
+                x=df_sim["時間 (年)"], y=df_sim["能量不平衡量 (W/m²)"],
+                mode="lines", line=dict(color="#a855f7", width=1.5, dash="dot"), name="淨不平衡通量 $R_{in}-R_{out}$"
+            ))
+            fig_rad.update_layout(get_plotly_layout(
+                "能量平衡收支通量", "時間 (年)", "輻射通量 (W/m²)",
+                height=480, x_range=[0, itera * dt], y_range=[-20, 380]
+            ))
+            render_plotly_chart(fig_rad, key="ebm0d_rad_chart")
+
+    # Data download
+    df_sim_export = run_ebm(
         S0=s0, alpha_ice=alpha_ice, alpha_land=alpha_land,
         T_ice=t_ice, T_land=t_land, epsilon=epsilon,
         T_init=t_init, dt=dt, itera=itera
     )
-
-    final_row = df_sim.iloc[-1]
-
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        render_stat_card("最終平衡溫度", f"{final_row['溫度 (K)']:.2f} K", f"{final_row['溫度 (℃)']:.2f} ℃")
-    with col_m2:
-        render_stat_card("最終行星反照率", f"{final_row['反照率 (Albedo)']:.3f}")
-    with col_m3:
-        render_stat_card("入射 / 出射能量", f"{final_row['入射能量 (W/m²)']:.1f} W/m²", f"出射: {final_row['出射能量 (W/m²)']:.1f} W/m²")
-    with col_m4:
-        imbalance_val = final_row['能量不平衡量 (W/m²)']
-        status = "已達完美平衡" if abs(imbalance_val) < 0.01 else "尚未完全收斂"
-        render_stat_card("淨輻射不平衡量", f"{imbalance_val:.4f} W/m²", status)
-
-    chart_c1, chart_c2 = st.columns(2)
-    with chart_c1:
-        fig_temp = go.Figure()
-        fig_temp.add_trace(go.Scatter(
-            x=df_sim["時間 (年)"], y=df_sim["溫度 (℃)"],
-            mode="lines+markers", marker=dict(size=4),
-            line=dict(color="#00e5ff", width=2.5), name="地表溫度 (℃)"
-        ))
-        fig_temp.add_hline(y=t_ice - 273.15, line_dash="dash", line_color="#38bdf8", annotation_text=f"冰封臨界溫 {t_ice-273.15:.1f}℃")
-        fig_temp.add_hline(y=t_land - 273.15, line_dash="dash", line_color="#4ade80", annotation_text=f"無冰臨界溫 {t_land-273.15:.1f}℃")
-        fig_temp.update_layout(get_plotly_layout(
-            "溫度隨時間演化歷程", "時間 (年)", "溫度 (℃)",
-            height=480, x_range=[0, itera * dt], y_range=[-45, 35]
-        ))
-        render_plotly_chart(fig_temp, key="ebm0d_temp_chart")
-
-    with chart_c2:
-        fig_rad = go.Figure()
-        fig_rad.add_trace(go.Scatter(
-            x=df_sim["時間 (年)"], y=df_sim["入射能量 (W/m²)"],
-            mode="lines", line=dict(color="#f59e0b", width=2), name="吸收入射太陽輻射 $R_{in}$"
-        ))
-        fig_rad.add_trace(go.Scatter(
-            x=df_sim["時間 (年)"], y=df_sim["出射能量 (W/m²)"],
-            mode="lines", line=dict(color="#ef4444", width=2), name="釋放長波輻射 $R_{out}$"
-        ))
-        fig_rad.add_trace(go.Scatter(
-            x=df_sim["時間 (年)"], y=df_sim["能量不平衡量 (W/m²)"],
-            mode="lines", line=dict(color="#a855f7", width=1.5, dash="dot"), name="淨不平衡通量 $R_{in}-R_{out}$"
-        ))
-        fig_rad.update_layout(get_plotly_layout(
-            "能量平衡收支通量", "時間 (年)", "輻射通量 (W/m²)",
-            height=480, x_range=[0, itera * dt], y_range=[-20, 380]
-        ))
-        render_plotly_chart(fig_rad, key="ebm0d_rad_chart")
-
-    # Data download
-    csv = df_sim.to_csv(index=False).encode('utf-8')
+    csv = df_sim_export.to_csv(index=False).encode('utf-8')
     st.download_button(
         "📥 下載本次模擬數據 (CSV)",
         data=csv,
