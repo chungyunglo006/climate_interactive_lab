@@ -13,7 +13,8 @@ from utils.ui import (
     get_plotly_layout,
     render_sync_input,
     set_param_value,
-    render_dynamic_controller
+    render_dynamic_controller,
+    execute_dynamic_step
 )
 from models.ebm_0d import (
     run_ebm,
@@ -22,6 +23,17 @@ from models.ebm_0d import (
     run_ebm_transient_collapse,
     run_ebm_constant
 )
+
+
+@st.cache_data
+def get_cached_bifurcation(alpha_ice, alpha_land, t_ice, t_land, epsilon):
+    """Caches bifurcation curve to ensure ultra-smooth 60fps real-time dynamic animation."""
+    return calculate_ebm_bifurcation(
+        alpha_ice=alpha_ice, alpha_land=alpha_land,
+        T_ice=t_ice, T_land=t_land, epsilon=epsilon,
+        s0_min=800.0, s0_max=2000.0, num_s0=240
+    )
+
 
 st.set_page_config(
     page_title="0D 能量平衡模型 (0D EBM) | 獨立實驗網站",
@@ -270,10 +282,9 @@ with tab3:
     """)
 
     with st.spinner("正在計算全域分歧分支曲線..."):
-        bifur = calculate_ebm_bifurcation(
+        bifur = get_cached_bifurcation(
             alpha_ice=alpha_ice, alpha_land=alpha_land,
-            T_ice=t_ice, T_land=t_land, epsilon=epsilon,
-            s0_min=800.0, s0_max=2000.0, num_s0=240
+            t_ice=t_ice, t_land=t_land, epsilon=epsilon
         )
 
     fig_bifur = go.Figure()
@@ -342,3 +353,6 @@ with tab4:
             st.plotly_chart(fig_col, use_container_width=True)
 
             st.success("✅ 觀察結果：當太陽常數降至約 1288 W/m² 以下時，溫暖起始軌跡無法再維持液態水，反照率劇增造成溫度斷崖式墜落至 -40℃ 以下，全球徹底冰封！")
+
+# Execute dynamic parameter animation step (runs at end after all charts and metrics render!)
+execute_dynamic_step(param_specs_0d, page_prefix="ebm0d")

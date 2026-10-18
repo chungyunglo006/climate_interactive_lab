@@ -282,11 +282,9 @@ def render_sync_input(label, key, min_val, max_val, default_val, step,
 
 def render_dynamic_controller(param_specs, page_prefix="p1"):
     """
-    Renders dynamic parameter sweep and animation controller.
-    Allows user to select variable, set direction, step size, interval,
-    and start/stop live stepping animation.
+    Renders dynamic parameter sweep and animation controller controls in the sidebar.
+    Does NOT block or interrupt page rendering.
     """
-    import time
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎬 動態參數演變控制器")
 
@@ -321,7 +319,7 @@ def render_dynamic_controller(param_specs, page_prefix="p1"):
     with col_d2:
         interval_val = st.number_input(
             "間隔 (秒)",
-            value=0.15,
+            value=0.20,
             min_value=0.02,
             max_value=3.0,
             step=0.05,
@@ -334,39 +332,70 @@ def render_dynamic_controller(param_specs, page_prefix="p1"):
 
     if start_btn:
         st.session_state[running_key] = True
+        st.rerun()
     if stop_btn:
         st.session_state[running_key] = False
+        st.rerun()
 
     if st.session_state.get(running_key, False):
-        st.sidebar.info(f"⚡ 動態演變中：{target_name} ({dir_choice})")
-        curr_val = st.session_state[target_key]
-        min_v = target_spec["min"]
-        max_v = target_spec["max"]
-        pingpong_dir_key = f"{page_prefix}_{target_key}_pp_dir"
+        curr_val = st.session_state.get(target_key, target_spec.get("default", 0.0))
+        st.sidebar.info(
+            f"⚡ **動態演變中**\n\n"
+            f"- 變動目標：**{target_name}**\n"
+            f"- 當前數值：`{curr_val:.2f}` {target_spec.get('unit', '')}\n"
+            f"- 模式：{dir_choice}"
+        )
 
-        if "Ping-Pong" in dir_choice:
-            pp_dir = st.session_state.get(pingpong_dir_key, 1)
-            next_val = curr_val + pp_dir * step_val
-            if next_val >= max_v:
-                next_val = max_v
-                st.session_state[pingpong_dir_key] = -1
-            elif next_val <= min_v:
-                next_val = min_v
-                st.session_state[pingpong_dir_key] = 1
-        elif "往大" in dir_choice:
-            next_val = curr_val + step_val
-            if next_val >= max_v:
-                next_val = max_v
-                st.session_state[running_key] = False
-        else:  # 往小
-            next_val = curr_val - step_val
-            if next_val <= min_v:
-                next_val = min_v
-                st.session_state[running_key] = False
 
-        # Apply updated value to synced states
-        set_param_value(target_key, next_val)
+def execute_dynamic_step(param_specs, page_prefix="p1"):
+    """
+    Executes one animation step at the VERY END of the page script.
+    Guarantees that all Plotly charts, tabs, and metrics have completely rendered
+    before sleeping and triggering the next frame!
+    """
+    import time
+    running_key = f"{page_prefix}_anim_running"
+    if not st.session_state.get(running_key, False):
+        return
 
-        time.sleep(interval_val)
-        st.rerun()
+    target_name = st.session_state.get(f"{page_prefix}_anim_target")
+    if not target_name or target_name not in param_specs:
+        return
+
+    target_spec = param_specs[target_name]
+    target_key = target_spec["key"]
+    dir_choice = st.session_state.get(f"{page_prefix}_anim_dir", "往大增加 (+)")
+    step_val = float(st.session_state.get(f"{page_prefix}_anim_step_val", target_spec["step"]))
+    interval_val = float(st.session_state.get(f"{page_prefix}_anim_interval", 0.20))
+
+    curr_val = float(st.session_state.get(target_key, target_spec.get("default", 0.0)))
+    min_v = float(target_spec["min"])
+    max_v = float(target_spec["max"])
+    pingpong_dir_key = f"{page_prefix}_{target_key}_pp_dir"
+
+    if "Ping-Pong" in dir_choice:
+        pp_dir = st.session_state.get(pingpong_dir_key, 1)
+        next_val = curr_val + pp_dir * step_val
+        if next_val >= max_v:
+            next_val = max_v
+            st.session_state[pingpong_dir_key] = -1
+        elif next_val <= min_v:
+            next_val = min_v
+            st.session_state[pingpong_dir_key] = 1
+    elif "往大" in dir_choice:
+        next_val = curr_val + step_val
+        if next_val >= max_v:
+            next_val = max_v
+            st.session_state[running_key] = False
+    else:  # 往小
+        next_val = curr_val - step_val
+        if next_val <= min_v:
+            next_val = min_v
+            st.session_state[running_key] = False
+
+    # Apply updated value to pending queue safely before next widgets instantiate
+    set_param_value(target_key, next_val)
+
+    time.sleep(interval_val)
+    st.rerun()
 

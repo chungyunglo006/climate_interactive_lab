@@ -13,7 +13,8 @@ from utils.ui import (
     get_plotly_layout,
     render_sync_input,
     set_param_value,
-    render_dynamic_controller
+    render_dynamic_controller,
+    execute_dynamic_step
 )
 from models.daisy_1d import run_daisyworld_1d
 
@@ -242,3 +243,7 @@ with tab4:
         file_name=f"daisyworld1d_S0_{s0}_L_{l_val}_K_{k_diff}.csv",
         mime="text/csv"
     )
+
+# Execute dynamic animation step at end of page
+execute_dynamic_step(param_specs_1dw, page_prefix="daisy1d")
+
