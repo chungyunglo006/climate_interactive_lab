@@ -178,10 +178,9 @@ def get_plotly_layout(title="", xaxis_title="", yaxis_title="", height=480):
 
 
 def set_param_value(key, new_val):
-    """Programmatically updates parameter across session state and synced widgets."""
+    """Programmatically updates parameter across session state safely before widgets instantiate."""
     st.session_state[key] = new_val
-    st.session_state[f"{key}_slider"] = new_val
-    st.session_state[f"{key}_num"] = new_val
+    st.session_state[f"{key}_pending"] = new_val
 
 
 def render_sync_input(label, key, min_val, max_val, default_val, step,
@@ -193,25 +192,33 @@ def render_sync_input(label, key, min_val, max_val, default_val, step,
     """
     c = container if container is not None else st
 
+    slider_key = f"{key}_slider"
+    num_key = f"{key}_num"
+    pending_key = f"{key}_pending"
+
     if key not in st.session_state:
         st.session_state[key] = default_val
 
+    # Apply any pending external updates before widget instantiation
+    if pending_key in st.session_state:
+        st.session_state[key] = st.session_state.pop(pending_key)
+        val = int(st.session_state[key]) if is_int else float(st.session_state[key])
+        st.session_state[slider_key] = val
+        st.session_state[num_key] = val
+
     # Ensure in bounds
-    current_val = st.session_state[key]
+    current_val = int(st.session_state[key]) if is_int else float(st.session_state[key])
     if current_val < min_val:
-        current_val = min_val
-        st.session_state[key] = min_val
+        current_val = int(min_val) if is_int else float(min_val)
+        st.session_state[key] = current_val
     elif current_val > max_val:
-        current_val = max_val
-        st.session_state[key] = max_val
+        current_val = int(max_val) if is_int else float(max_val)
+        st.session_state[key] = current_val
 
-    slider_key = f"{key}_slider"
-    num_key = f"{key}_num"
-
-    # Sync widget states if external changes happened (e.g. from presets or animation)
-    if slider_key not in st.session_state or st.session_state[slider_key] != current_val:
+    # Initialize slider and num state keys if not present
+    if slider_key not in st.session_state:
         st.session_state[slider_key] = current_val
-    if num_key not in st.session_state or st.session_state[num_key] != current_val:
+    if num_key not in st.session_state:
         st.session_state[num_key] = current_val
 
     def on_slider_change():
