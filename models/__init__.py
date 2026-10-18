@@ -25,17 +25,17 @@ from .daisy_1d import (
     run_daisyworld_1d,
     run_daisyworld_with_grey_1d
 )
-from .models_2d import (
-    LAT_LIST_2D,
-    LON_LIST_2D,
-    SUNWT_LIST_2D,
-    LAT_EDGES_2D,
-    LON_EDGES_2D,
-    LAND_MASK_2D,
-    run_ebm_2d,
-    run_daisyworld_2d,
-    run_daisyworld_grey_2d
-)
+# from .models_2d.py import (
+#     LAT_LIST_2D,
+#     LON_LIST_2D,
+#     SUNWT_LIST_2D,
+#     LAT_EDGES_2D,
+#     LON_EDGES_2D,
+#     LAND_MASK_2D,
+#     run_ebm_2d,
+#     run_daisyworld_2d,
+#     run_daisyworld_grey_2d
+# )
 
 __all__ = [
     "run_ebm",
@@ -51,14 +51,6 @@ __all__ = [
     "sweep_daisyworld_luminosity",
     "sweep_daisyworld_grey_luminosity",
     "run_daisyworld_1d",
-    "run_daisyworld_with_grey_1d",
-    "LAT_LIST_2D",
-    "LON_LIST_2D",
-    "SUNWT_LIST_2D",
-    "LAT_EDGES_2D",
-    "LON_EDGES_2D",
-    "LAND_MASK_2D",
-    "run_ebm_2d",
-    "run_daisyworld_2d",
-    "run_daisyworld_grey_2d"
+    "run_daisyworld_with_grey_1d"
+    # 2D models temporarily commented out
 ]

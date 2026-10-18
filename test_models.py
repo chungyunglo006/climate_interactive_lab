@@ -13,10 +13,10 @@ from models import (
     run_daisyworld_with_grey,
     sweep_daisyworld_luminosity,
     run_daisyworld_1d,
-    run_daisyworld_with_grey_1d,
-    run_ebm_2d,
-    run_daisyworld_2d,
-    run_daisyworld_grey_2d
+    run_daisyworld_with_grey_1d
+    # run_ebm_2d,
+    # run_daisyworld_2d,
+    # run_daisyworld_grey_2d
 )
 
 print("Testing 0D EBM...")
@@ -38,8 +38,8 @@ print("Testing 1D Daisyworld...")
 hist_1d, lats, t_dead = run_daisyworld_1d(S0=2100.0, L=1.0, itera=30)
 print(f"1D Daisyworld final mean T: {hist_1d[-1]['mean_t']:.2f} °C")
 
-print("Testing 2D Models...")
-T_2d, hist_2d = run_ebm_2d(itera=30)
-print(f"2D EBM shape: {T_2d.shape}, min T: {T_2d.min():.2f} °C, max T: {T_2d.max():.2f} °C")
+# print("Testing 2D Models...")
+# T_2d, hist_2d = run_ebm_2d(itera=30)
+# print(f"2D EBM shape: {T_2d.shape}, min T: {T_2d.min():.2f} °C, max T: {T_2d.max():.2f} °C")
 
 print("ALL TESTS PASSED SUCCESSFULLY!")

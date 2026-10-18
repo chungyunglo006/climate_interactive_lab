@@ -6,7 +6,15 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from utils.ui import apply_custom_styles, render_hero, render_stat_card, get_plotly_layout
+from utils.ui import (
+    apply_custom_styles,
+    render_hero,
+    render_stat_card,
+    get_plotly_layout,
+    render_sync_input,
+    set_param_value,
+    render_dynamic_controller
+)
 from models.daisy_0d import (
     run_daisyworld_with_grey,
     sweep_daisyworld_grey_luminosity,
@@ -30,38 +38,57 @@ render_hero(
 # Sidebar Parameters
 st.sidebar.header("⚙️ 灰雛菊實驗參數")
 
+if "daisygrey0d_preset" not in st.session_state:
+    st.session_state["daisygrey0d_preset"] = "標準三物種共存 (L=1.0, ag=0.01)"
+
 preset = st.sidebar.selectbox(
     "🎯 預設情境 (Scenario Presets)",
-    ["標準三物種共存 (L=1.0, ag=0.01)", "灰雛菊強勢入侵 (ag_init=0.10)", "高光度三物種競爭 (L=1.20)", "低光度黑灰競爭 (L=0.80)"]
+    ["自訂參數 (Custom)", "標準三物種共存 (L=1.0, ag=0.01)", "灰雛菊強勢入侵 (ag_init=0.10)", "高光度三物種競爭 (L=1.20)", "低光度黑灰競爭 (L=0.80)"],
+    index=1
 )
 
-if preset == "灰雛菊強勢入侵 (ag_init=0.10)":
-    default_l = 1.0
-    default_ag = 0.10
-elif preset == "高光度三物種競爭 (L=1.20)":
-    default_l = 1.20
-    default_ag = 0.01
-elif preset == "低光度黑灰競爭 (L=0.80)":
-    default_l = 0.80
-    default_ag = 0.01
-else:
-    default_l = 1.0
-    default_ag = 0.01
+if preset != st.session_state["daisygrey0d_preset"] and preset != "自訂參數 (Custom)":
+    st.session_state["daisygrey0d_preset"] = preset
+    if preset == "標準三物種共存 (L=1.0, ag=0.01)":
+        set_param_value("s0_dwg", 917.0)
+        set_param_value("l_val_dwg", 1.0)
+        set_param_value("ag_init_dwg", 0.01)
+    elif preset == "灰雛菊強勢入侵 (ag_init=0.10)":
+        set_param_value("s0_dwg", 917.0)
+        set_param_value("l_val_dwg", 1.0)
+        set_param_value("ag_init_dwg", 0.10)
+    elif preset == "高光度三物種競爭 (L=1.20)":
+        set_param_value("s0_dwg", 917.0)
+        set_param_value("l_val_dwg", 1.20)
+        set_param_value("ag_init_dwg", 0.01)
+    elif preset == "低光度黑灰競爭 (L=0.80)":
+        set_param_value("s0_dwg", 917.0)
+        set_param_value("l_val_dwg", 0.80)
+        set_param_value("ag_init_dwg", 0.01)
 
-s0 = st.sidebar.slider("太陽常數 $S_0$ (W/m²)", 700.0, 1200.0, 917.0, 10.0)
-l_val = st.sidebar.slider("太陽光度因子 $L$", 0.6, 1.7, default_l, 0.02)
+s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dwg", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
+l_val = render_sync_input("太陽光度因子 L", "l_val_dwg", 0.5, 1.8, 1.0, 0.02, format="%.2f")
 
-with st.sidebar.expander("🔬 反照率與初始覆蓋率"):
-    alpha_w = st.slider("白雛菊反照率 $\\alpha_w$", 0.5, 0.9, 0.75, 0.05)
-    alpha_b = st.slider("黑雛菊反照率 $\\alpha_b$", 0.1, 0.4, 0.25, 0.05)
-    alpha_g = st.slider("灰雛菊反照率 $\\alpha_g$ (中性物種)", 0.3, 0.7, 0.50, 0.05)
-    alpha_u = st.slider("裸地反照率 $\\alpha_u$", 0.3, 0.7, 0.50, 0.05)
-    q_val = st.slider("微氣候係數 $q$ (℃)", 5.0, 40.0, 20.0, 1.0)
-    gamma_val = st.slider("死亡率 $\\gamma$", 0.1, 0.6, 0.3, 0.05)
-    aw_init = st.slider("白雛菊初始值", 0.001, 0.2, 0.01, 0.005)
-    ab_init = st.slider("黑雛菊初始值", 0.001, 0.2, 0.01, 0.005)
-    ag_init = st.slider("灰雛菊初始值", 0.001, 0.2, default_ag, 0.005)
-    itera = st.sidebar.slider("迭代步數", 50, 400, 150, 25)
+with st.sidebar.expander("🔬 反照率與初始覆蓋率 (滑桿 + 精確數值)", expanded=True):
+    alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+    alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_dwg", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+    alpha_g = render_sync_input("灰雛菊反照率 α_g (中性物種)", "alpha_g_dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+    alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+    q_val = render_sync_input("微氣候係數 q (℃)", "q_val_dwg", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+    gamma_val = render_sync_input("死亡率 γ", "gamma_val_dwg", 0.05, 0.6, 0.3, 0.02, format="%.2f")
+    aw_init = render_sync_input("白雛菊初始值", "aw_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+    ab_init = render_sync_input("黑雛菊初始值", "ab_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+    ag_init = render_sync_input("灰雛菊初始值", "ag_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+    itera = render_sync_input("迭代步數", "itera_dwg", 50, 400, 150, 25, is_int=True)
+
+# Dynamic Sweeper Controller
+param_specs_dwg = {
+    "太陽光度因子 L": {"key": "l_val_dwg", "min": 0.5, "max": 1.8, "step": 0.02, "unit": ""},
+    "太陽常數 S₀": {"key": "s0_dwg", "min": 700.0, "max": 1300.0, "step": 10.0, "unit": "W/m²"},
+    "灰雛菊初始覆蓋率": {"key": "ag_init_dwg", "min": 0.001, "max": 0.3, "step": 0.01, "unit": ""},
+    "微氣候係數 q": {"key": "q_val_dwg", "min": 5.0, "max": 40.0, "step": 1.0, "unit": "℃"}
+}
+render_dynamic_controller(param_specs_dwg, page_prefix="daisygrey0d")
 
 with st.expander("📐 點擊展開：灰雛菊模型原理與演化論批判"):
     st.markdown(r"""

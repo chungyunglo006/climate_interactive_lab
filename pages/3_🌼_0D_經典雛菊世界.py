@@ -6,7 +6,15 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from utils.ui import apply_custom_styles, render_hero, render_stat_card, get_plotly_layout
+from utils.ui import (
+    apply_custom_styles,
+    render_hero,
+    render_stat_card,
+    get_plotly_layout,
+    render_sync_input,
+    set_param_value,
+    render_dynamic_controller
+)
 from models.daisy_0d import (
     run_daisyworld,
     sweep_daisyworld_luminosity,
@@ -30,32 +38,51 @@ render_hero(
 # Sidebar Parameters
 st.sidebar.header("⚙️ 雛菊世界參數設定")
 
+if "daisy0d_preset" not in st.session_state:
+    st.session_state["daisy0d_preset"] = "標準經典設定 (L=1.0, S0=917)"
+
 preset = st.sidebar.selectbox(
     "🎯 預設情境 (Scenario Presets)",
-    ["標準經典設定 (L=1.0, S0=917)", "低太陽光度冰冷期 (L=0.75 - 黑雛菊主導)", "高太陽光度炎熱期 (L=1.25 - 白雛菊主導)", "極端高光度生命崩潰 (L=1.55)"]
+    ["自訂參數 (Custom)", "標準經典設定 (L=1.0, S0=917)", "低太陽光度冰冷期 (L=0.75 - 黑雛菊主導)", "高太陽光度炎熱期 (L=1.25 - 白雛菊主導)", "極端高光度生命崩潰 (L=1.55)"],
+    index=1
 )
 
-if preset == "低太陽光度冰冷期 (L=0.75 - 黑雛菊主導)":
-    default_l = 0.75
-elif preset == "高太陽光度炎熱期 (L=1.25 - 白雛菊主導)":
-    default_l = 1.25
-elif preset == "極端高光度生命崩潰 (L=1.55)":
-    default_l = 1.55
-else:
-    default_l = 1.0
+if preset != st.session_state["daisy0d_preset"] and preset != "自訂參數 (Custom)":
+    st.session_state["daisy0d_preset"] = preset
+    if preset == "標準經典設定 (L=1.0, S0=917)":
+        set_param_value("s0_dw", 917.0)
+        set_param_value("l_val_dw", 1.0)
+    elif preset == "低太陽光度冰冷期 (L=0.75 - 黑雛菊主導)":
+        set_param_value("s0_dw", 917.0)
+        set_param_value("l_val_dw", 0.75)
+    elif preset == "高太陽光度炎熱期 (L=1.25 - 白雛菊主導)":
+        set_param_value("s0_dw", 917.0)
+        set_param_value("l_val_dw", 1.25)
+    elif preset == "極端高光度生命崩潰 (L=1.55)":
+        set_param_value("s0_dw", 917.0)
+        set_param_value("l_val_dw", 1.55)
 
-s0 = st.sidebar.slider("太陽常數 $S_0$ (W/m²)", 700.0, 1200.0, 917.0, 10.0)
-l_val = st.sidebar.slider("太陽光度因子 $L$", 0.6, 1.7, default_l, 0.02)
+s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dw", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
+l_val = render_sync_input("太陽光度因子 L", "l_val_dw", 0.5, 1.8, 1.0, 0.02, format="%.2f")
 
-with st.sidebar.expander("🔬 生態與反照率參數"):
-    alpha_w = st.slider("白雛菊反照率 $\\alpha_w$", 0.5, 0.9, 0.75, 0.05)
-    alpha_b = st.slider("黑雛菊反照率 $\\alpha_b$", 0.1, 0.4, 0.25, 0.05)
-    alpha_u = st.slider("裸地反照率 $\\alpha_u$", 0.3, 0.7, 0.50, 0.05)
-    q_val = st.slider("局地微氣候反饋係數 $q$ (℃)", 5.0, 40.0, 20.0, 1.0)
-    gamma_val = st.slider("雛菊死亡率 $\\gamma$", 0.1, 0.6, 0.3, 0.05)
-    aw_init = st.slider("白雛菊初始覆蓋率", 0.001, 0.2, 0.01, 0.005)
-    ab_init = st.slider("黑雛菊初始覆蓋率", 0.001, 0.2, 0.01, 0.005)
-    itera = st.sidebar.slider("迭代步數", 50, 400, 150, 25)
+with st.sidebar.expander("🔬 生態與反照率參數 (滑桿 + 精確數值)", expanded=True):
+    alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+    alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_dw", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+    alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_dw", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+    q_val = render_sync_input("局地微氣候反饋 q (℃)", "q_val_dw", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+    gamma_val = render_sync_input("雛菊死亡率 γ", "gamma_val_dw", 0.05, 0.6, 0.3, 0.02, format="%.2f")
+    aw_init = render_sync_input("白雛菊初始值", "aw_init_dw", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+    ab_init = render_sync_input("黑雛菊初始值", "ab_init_dw", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+    itera = render_sync_input("迭代步數", "itera_dw", 50, 400, 150, 25, is_int=True)
+
+# Dynamic Sweeper Controller
+param_specs_dw = {
+    "太陽光度因子 L": {"key": "l_val_dw", "min": 0.5, "max": 1.8, "step": 0.02, "unit": ""},
+    "太陽常數 S₀": {"key": "s0_dw", "min": 700.0, "max": 1300.0, "step": 10.0, "unit": "W/m²"},
+    "微氣候係數 q": {"key": "q_val_dw", "min": 5.0, "max": 40.0, "step": 1.0, "unit": "℃"},
+    "死亡率 γ": {"key": "gamma_val_dw", "min": 0.05, "max": 0.6, "step": 0.02, "unit": ""}
+}
+render_dynamic_controller(param_specs_dw, page_prefix="daisy0d")
 
 with st.expander("📐 點擊展開：經典雛菊世界數學原理與生物物理聯立方程"):
     st.markdown(r"""

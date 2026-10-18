@@ -6,7 +6,15 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from utils.ui import apply_custom_styles, render_hero, render_stat_card, get_plotly_layout
+from utils.ui import (
+    apply_custom_styles,
+    render_hero,
+    render_stat_card,
+    get_plotly_layout,
+    render_sync_input,
+    set_param_value,
+    render_dynamic_controller
+)
 from models.ebm_0d import (
     run_ebm,
     find_three_equilibrium_states,
@@ -32,38 +40,53 @@ render_hero(
 # Sidebar: Presets and Parameters
 st.sidebar.header("⚙️ 實驗控制面板")
 
+if "ebm0d_current_preset" not in st.session_state:
+    st.session_state["ebm0d_current_preset"] = "現今溫暖地球 (Modern Earth)"
+
 preset = st.sidebar.selectbox(
     "🎯 預設情境 (Scenario Presets)",
-    ["自訂參數 (Custom)", "現今溫暖地球 (Modern Earth)", "冰球地球 (Snowball Earth)", "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)", "高太陽輻射超溫暖態"]
+    ["自訂參數 (Custom)", "現今溫暖地球 (Modern Earth)", "冰球地球 (Snowball Earth)", "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)", "高太陽輻射超溫暖態"],
+    index=1
 )
 
-if preset == "現今溫暖地球 (Modern Earth)":
-    default_s0 = 1368.0
-    default_t_init = 288.0
-elif preset == "冰球地球 (Snowball Earth)":
-    default_s0 = 1200.0
-    default_t_init = 230.0
-elif preset == "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)":
-    default_s0 = 1288.6
-    default_t_init = 280.0
-elif preset == "高太陽輻射超溫暖態":
-    default_s0 = 1600.0
-    default_t_init = 295.0
-else:
-    default_s0 = 1368.0
-    default_t_init = 288.0
+if preset != st.session_state["ebm0d_current_preset"] and preset != "自訂參數 (Custom)":
+    st.session_state["ebm0d_current_preset"] = preset
+    if preset == "現今溫暖地球 (Modern Earth)":
+        set_param_value("s0", 1368.0)
+        set_param_value("t_init", 288.0)
+    elif preset == "冰球地球 (Snowball Earth)":
+        set_param_value("s0", 1200.0)
+        set_param_value("t_init", 230.0)
+    elif preset == "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)":
+        set_param_value("s0", 1288.6)
+        set_param_value("t_init", 280.0)
+    elif preset == "高太陽輻射超溫暖態":
+        set_param_value("s0", 1600.0)
+        set_param_value("t_init", 295.0)
 
-s0 = st.sidebar.slider("太陽常數 $S_0$ (W/m²)", min_value=800.0, max_value=2000.0, value=default_s0, step=5.0)
-t_init = st.sidebar.slider("初始溫度 $T_{init}$ (K)", min_value=200.0, max_value=320.0, value=default_t_init, step=1.0)
+s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0", min_val=800.0, max_val=2000.0, default_val=1368.0, step=5.0, format="%.1f")
+t_init = render_sync_input("初始溫度 T_init (K)", "t_init", min_val=200.0, max_val=320.0, default_val=288.0, step=1.0, format="%.1f")
 
-with st.sidebar.expander("🔬 進階物性參數 (Physical Parameters)"):
-    alpha_ice = st.slider("冰雪反照率 $\\alpha_{ice}$", 0.4, 0.8, 0.6, 0.05)
-    alpha_land = st.slider("陸地反照率 $\\alpha_{land}$", 0.1, 0.5, 0.3, 0.05)
-    t_ice = st.slider("冰雪臨界溫度 $T_{ice}$ (K)", 240.0, 275.0, 263.0, 1.0)
-    t_land = st.slider("暖地臨界溫度 $T_{land}$ (K)", 270.0, 300.0, 283.0, 1.0)
-    epsilon = st.slider("有效發射率 $\\epsilon$ (溫室效應)", 0.4, 0.9, 0.62, 0.02)
-    dt = st.slider("時間步長 $\\Delta t$ (年)", 0.01, 0.5, 0.1, 0.01)
-    itera = st.slider("總迭代步數", 50, 500, 200, 25)
+with st.sidebar.expander("🔬 進階物性參數 (滑桿 + 精確數值輸入)", expanded=True):
+    alpha_ice = render_sync_input("冰雪反照率 α_ice", "alpha_ice", 0.4, 0.8, 0.6, 0.01, format="%.2f")
+    alpha_land = render_sync_input("陸地反照率 α_land", "alpha_land", 0.1, 0.5, 0.3, 0.01, format="%.2f")
+    t_ice = render_sync_input("冰雪臨界溫度 T_ice (K)", "t_ice", 240.0, 275.0, 263.0, 1.0, format="%.1f")
+    t_land = render_sync_input("暖地臨界溫度 T_land (K)", "t_land", 270.0, 300.0, 283.0, 1.0, format="%.1f")
+    epsilon = render_sync_input("有效發射率 ε (溫室效應)", "epsilon", 0.4, 0.9, 0.62, 0.01, format="%.2f")
+    dt = render_sync_input("時間步長 Δt (年)", "dt", 0.01, 0.5, 0.1, 0.01, format="%.2f")
+    itera = render_sync_input("總迭代步數", "itera", 50, 500, 200, 25, is_int=True)
+
+# Dynamic Parameter Sweeper / Animation Controller
+param_specs_0d = {
+    "太陽常數 S₀": {"key": "s0", "min": 800.0, "max": 2000.0, "step": 10.0, "unit": "W/m²"},
+    "初始溫度 T_init": {"key": "t_init", "min": 200.0, "max": 320.0, "step": 2.0, "unit": "K"},
+    "冰雪反照率 α_ice": {"key": "alpha_ice", "min": 0.4, "max": 0.8, "step": 0.02, "unit": ""},
+    "陸地反照率 α_land": {"key": "alpha_land", "min": 0.1, "max": 0.5, "step": 0.02, "unit": ""},
+    "有效發射率 ε": {"key": "epsilon", "min": 0.4, "max": 0.9, "step": 0.02, "unit": ""},
+    "冰雪臨界溫 T_ice": {"key": "t_ice", "min": 240.0, "max": 275.0, "step": 1.0, "unit": "K"},
+    "暖地臨界溫 T_land": {"key": "t_land", "min": 270.0, "max": 300.0, "step": 1.0, "unit": "K"}
+}
+render_dynamic_controller(param_specs_0d, page_prefix="ebm0d")
 
 # Mathematical Principle Expander
 with st.expander("📐 點擊展開：模型數學原理與方程式"):

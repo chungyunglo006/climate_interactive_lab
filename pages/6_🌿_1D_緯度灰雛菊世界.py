@@ -6,7 +6,15 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from utils.ui import apply_custom_styles, render_hero, render_stat_card, get_plotly_layout
+from utils.ui import (
+    apply_custom_styles,
+    render_hero,
+    render_stat_card,
+    get_plotly_layout,
+    render_sync_input,
+    set_param_value,
+    render_dynamic_controller
+)
 from models.daisy_1d import run_daisyworld_with_grey_1d
 
 st.set_page_config(
@@ -26,37 +34,56 @@ render_hero(
 # Sidebar Parameters
 st.sidebar.header("⚙️ 1D 灰雛菊空間參數")
 
+if "daisygrey1d_preset" not in st.session_state:
+    st.session_state["daisygrey1d_preset"] = "標準三物種空間平衡 (S0=2100, L=1.0)"
+
 preset = st.sidebar.selectbox(
     "🎯 預設情境 (Scenario Presets)",
-    ["標準三物種空間平衡 (S0=2100, L=1.0)", "灰雛菊高初始佔據 (ag_init=0.08)", "極區黑灰競爭 (S0=1850)", "赤道白灰競爭 (S0=2350)"]
+    ["自訂參數 (Custom)", "標準三物種空間平衡 (S0=2100, L=1.0)", "灰雛菊高初始佔據 (ag_init=0.08)", "極區黑灰競爭 (S0=1850)", "赤道白灰競爭 (S0=2350)"],
+    index=1
 )
 
-if preset == "灰雛菊高初始佔據 (ag_init=0.08)":
-    default_s0 = 2100.0
-    default_ag = 0.08
-elif preset == "極區黑灰競爭 (S0=1850)":
-    default_s0 = 1850.0
-    default_ag = 0.01
-elif preset == "赤道白灰競爭 (S0=2350)":
-    default_s0 = 2350.0
-    default_ag = 0.01
-else:
-    default_s0 = 2100.0
-    default_ag = 0.01
+if preset != st.session_state["daisygrey1d_preset"] and preset != "自訂參數 (Custom)":
+    st.session_state["daisygrey1d_preset"] = preset
+    if preset == "標準三物種空間平衡 (S0=2100, L=1.0)":
+        set_param_value("s0_1dwg", 2100.0)
+        set_param_value("l_val_1dwg", 1.0)
+        set_param_value("ag_init_1dwg", 0.01)
+    elif preset == "灰雛菊高初始佔據 (ag_init=0.08)":
+        set_param_value("s0_1dwg", 2100.0)
+        set_param_value("l_val_1dwg", 1.0)
+        set_param_value("ag_init_1dwg", 0.08)
+    elif preset == "極區黑灰競爭 (S0=1850)":
+        set_param_value("s0_1dwg", 1850.0)
+        set_param_value("l_val_1dwg", 1.0)
+        set_param_value("ag_init_1dwg", 0.01)
+    elif preset == "赤道白灰競爭 (S0=2350)":
+        set_param_value("s0_1dwg", 2350.0)
+        set_param_value("l_val_1dwg", 1.0)
+        set_param_value("ag_init_1dwg", 0.01)
 
-s0 = st.sidebar.slider("太陽常數 $S_0$ (W/m²)", 1500.0, 2600.0, default_s0, 50.0)
-l_val = st.sidebar.slider("太陽光度因子 $L$", 0.7, 1.4, 1.0, 0.05)
-k_diff = st.sidebar.slider("大氣熱擴散傳遞 $K$ (W/m²/℃)", 0.5, 8.0, 3.87, 0.1)
+s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dwg", 1400.0, 2800.0, 2100.0, 50.0, format="%.1f")
+l_val = render_sync_input("太陽光度因子 L", "l_val_1dwg", 0.6, 1.6, 1.0, 0.02, format="%.2f")
+k_diff = render_sync_input("大氣熱擴散傳遞 K (W/m²/℃)", "k_diff_1dwg", 0.5, 9.0, 3.87, 0.1, format="%.2f")
 
-with st.sidebar.expander("🔬 反照率與初始分佈"):
-    alpha_w = st.slider("白雛菊反照率 $\\alpha_w$", 0.5, 0.9, 0.75, 0.05)
-    alpha_b = st.slider("黑雛菊反照率 $\\alpha_b$", 0.1, 0.4, 0.25, 0.05)
-    alpha_g = st.slider("灰雛菊反照率 $\\alpha_g$", 0.3, 0.7, 0.50, 0.05)
-    alpha_u = st.slider("裸地反照率 $\\alpha_u$", 0.3, 0.7, 0.50, 0.05)
-    q_val = st.slider("微氣候係數 $q$ (℃)", 5.0, 40.0, 20.0, 1.0)
-    gamma_val = st.slider("死亡率 $\\gamma$", 0.1, 0.6, 0.3, 0.05)
-    ag_init = st.slider("灰雛菊初始覆蓋率", 0.001, 0.15, default_ag, 0.005)
-    itera = st.sidebar.slider("迭代步數", 50, 300, 150, 25)
+with st.sidebar.expander("🔬 反照率與初始分佈 (滑桿 + 精確數值)", expanded=True):
+    alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+    alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_1dwg", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+    alpha_g = render_sync_input("灰雛菊反照率 α_g", "alpha_g_1dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+    alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_1dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+    q_val = render_sync_input("微氣候係數 q (℃)", "q_val_1dwg", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+    gamma_val = render_sync_input("死亡率 γ", "gamma_val_1dwg", 0.05, 0.6, 0.3, 0.02, format="%.2f")
+    ag_init = render_sync_input("灰雛菊初始覆蓋率", "ag_init_1dwg", 0.001, 0.2, 0.01, 0.005, format="%.3f")
+    itera = render_sync_input("迭代步數", "itera_1dwg", 30, 300, 150, 25, is_int=True)
+
+# Dynamic Sweeper Controller
+param_specs_1dwg = {
+    "太陽常數 S₀": {"key": "s0_1dwg", "min": 1400.0, "max": 2800.0, "step": 50.0, "unit": "W/m²"},
+    "太陽光度 L": {"key": "l_val_1dwg", "min": 0.6, "max": 1.6, "step": 0.02, "unit": ""},
+    "大氣擴散係數 K": {"key": "k_diff_1dwg", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
+    "灰雛菊初始覆蓋率": {"key": "ag_init_1dwg", "min": 0.001, "max": 0.2, "step": 0.01, "unit": ""}
+}
+render_dynamic_controller(param_specs_1dwg, page_prefix="daisygrey1d")
 
 # Run Simulation
 history_grey_1d, lats_grey_1d, temp_nobio_g = run_daisyworld_with_grey_1d(

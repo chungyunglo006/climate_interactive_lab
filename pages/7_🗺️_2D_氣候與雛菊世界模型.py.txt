@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils.ui import apply_custom_styles, render_hero, render_stat_card, get_plotly_layout
-from models.models_2d import (
+from models.models_2d.py import (
     LAT_LIST_2D,
     LON_LIST_2D,
     SUNWT_LIST_2D,

@@ -175,3 +175,191 @@ def get_plotly_layout(title="", xaxis_title="", yaxis_title="", height=480):
         height=height,
         hovermode="x unified"
     )
+
+
+def set_param_value(key, new_val):
+    """Programmatically updates parameter across session state and synced widgets."""
+    st.session_state[key] = new_val
+    st.session_state[f"{key}_slider"] = new_val
+    st.session_state[f"{key}_num"] = new_val
+
+
+def render_sync_input(label, key, min_val, max_val, default_val, step,
+                      format="%.2f", is_int=False, container=None):
+    """
+    Renders synchronized slider and number_input allowing users to either
+    drag the slider or directly type numeric values.
+    """
+    if container is None:
+        container = st.sidebar
+
+    if key not in st.session_state:
+        st.session_state[key] = default_val
+
+    # Ensure in bounds
+    current_val = st.session_state[key]
+    if current_val < min_val:
+        current_val = min_val
+        st.session_state[key] = min_val
+    elif current_val > max_val:
+        current_val = max_val
+        st.session_state[key] = max_val
+
+    slider_key = f"{key}_slider"
+    num_key = f"{key}_num"
+
+    # Sync widget states if external changes happened (e.g. from presets or animation)
+    if slider_key not in st.session_state or st.session_state[slider_key] != current_val:
+        st.session_state[slider_key] = current_val
+    if num_key not in st.session_state or st.session_state[num_key] != current_val:
+        st.session_state[num_key] = current_val
+
+    def on_slider_change():
+        val = st.session_state[slider_key]
+        st.session_state[key] = val
+        st.session_state[num_key] = val
+
+    def on_num_change():
+        val = st.session_state[num_key]
+        st.session_state[key] = val
+        st.session_state[slider_key] = val
+
+    container.markdown(f"**{label}**")
+    col1, col2 = container.columns([3, 2])
+    with col1:
+        if is_int:
+            st.slider(
+                label,
+                min_value=int(min_val),
+                max_value=int(max_val),
+                step=int(step),
+                key=slider_key,
+                on_change=on_slider_change,
+                label_visibility="collapsed"
+            )
+        else:
+            st.slider(
+                label,
+                min_value=float(min_val),
+                max_value=float(max_val),
+                step=float(step),
+                key=slider_key,
+                on_change=on_slider_change,
+                label_visibility="collapsed"
+            )
+    with col2:
+        if is_int:
+            st.number_input(
+                label,
+                min_value=int(min_val),
+                max_value=int(max_val),
+                step=int(step),
+                key=num_key,
+                on_change=on_num_change,
+                label_visibility="collapsed"
+            )
+        else:
+            st.number_input(
+                label,
+                min_value=float(min_val),
+                max_value=float(max_val),
+                step=float(step),
+                format=format,
+                key=num_key,
+                on_change=on_num_change,
+                label_visibility="collapsed"
+            )
+
+    return st.session_state[key]
+
+
+def render_dynamic_controller(param_specs, page_prefix="p1"):
+    """
+    Renders dynamic parameter sweep and animation controller.
+    Allows user to select variable, set direction, step size, interval,
+    and start/stop live stepping animation.
+    """
+    import time
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🎬 動態參數演變控制器")
+
+    running_key = f"{page_prefix}_anim_running"
+    if running_key not in st.session_state:
+        st.session_state[running_key] = False
+
+    target_name = st.sidebar.selectbox(
+        "🎯 選擇要變動的變數",
+        list(param_specs.keys()),
+        key=f"{page_prefix}_anim_target"
+    )
+    target_spec = param_specs[target_name]
+    target_key = target_spec["key"]
+
+    dir_choice = st.sidebar.radio(
+        "🔄 變動方向",
+        ["往大增加 (+)", "往小減少 (-)", "來回擺動 (Ping-Pong)"],
+        horizontal=True,
+        key=f"{page_prefix}_anim_dir"
+    )
+
+    col_d1, col_d2 = st.sidebar.columns([3, 2])
+    with col_d1:
+        step_val = st.number_input(
+            "變動大小值 (Δ)",
+            value=float(target_spec["step"]),
+            min_value=0.0001,
+            step=float(target_spec["step"]) / 2.0,
+            key=f"{page_prefix}_anim_step_val"
+        )
+    with col_d2:
+        interval_val = st.number_input(
+            "間隔 (秒)",
+            value=0.15,
+            min_value=0.02,
+            max_value=3.0,
+            step=0.05,
+            key=f"{page_prefix}_anim_interval"
+        )
+
+    btn_col1, btn_col2 = st.sidebar.columns(2)
+    start_btn = btn_col1.button("▶️ 開始動態", use_container_width=True, type="primary")
+    stop_btn = btn_col2.button("⏹️ 停止演變", use_container_width=True)
+
+    if start_btn:
+        st.session_state[running_key] = True
+    if stop_btn:
+        st.session_state[running_key] = False
+
+    if st.session_state.get(running_key, False):
+        st.sidebar.info(f"⚡ 動態演變中：{target_name} ({dir_choice})")
+        curr_val = st.session_state[target_key]
+        min_v = target_spec["min"]
+        max_v = target_spec["max"]
+        pingpong_dir_key = f"{page_prefix}_{target_key}_pp_dir"
+
+        if "Ping-Pong" in dir_choice:
+            pp_dir = st.session_state.get(pingpong_dir_key, 1)
+            next_val = curr_val + pp_dir * step_val
+            if next_val >= max_v:
+                next_val = max_v
+                st.session_state[pingpong_dir_key] = -1
+            elif next_val <= min_v:
+                next_val = min_v
+                st.session_state[pingpong_dir_key] = 1
+        elif "往大" in dir_choice:
+            next_val = curr_val + step_val
+            if next_val >= max_v:
+                next_val = max_v
+                st.session_state[running_key] = False
+        else:  # 往小
+            next_val = curr_val - step_val
+            if next_val <= min_v:
+                next_val = min_v
+                st.session_state[running_key] = False
+
+        # Apply updated value to synced states
+        set_param_value(target_key, next_val)
+
+        time.sleep(interval_val)
+        st.rerun()
+

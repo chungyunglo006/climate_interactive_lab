@@ -6,7 +6,15 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from utils.ui import apply_custom_styles, render_hero, render_stat_card, get_plotly_layout
+from utils.ui import (
+    apply_custom_styles,
+    render_hero,
+    render_stat_card,
+    get_plotly_layout,
+    render_sync_input,
+    set_param_value,
+    render_dynamic_controller
+)
 from models.ebm_1d import (
     run_ebm_1d,
     run_ebm_1d_history,
@@ -30,35 +38,51 @@ render_hero(
 # Sidebar Parameters
 st.sidebar.header("⚙️ 1D 物理參數設定")
 
+if "ebm1d_preset" not in st.session_state:
+    st.session_state["ebm1d_preset"] = "標準現今地球 (Frac_SC=1.0, K=3.87)"
+
 preset = st.sidebar.selectbox(
     "🎯 預設情境 (Scenario Presets)",
-    ["標準現今地球 (Frac_SC=1.0, K=3.87)", "太陽減弱寒冷化 (Frac_SC=0.85)", "熱量強擴散均溫地球 (K=7.0)", "熱量弱擴散極端溫差地球 (K=1.0)"]
+    ["自訂參數 (Custom)", "標準現今地球 (Frac_SC=1.0, K=3.87)", "太陽減弱寒冷化 (Frac_SC=0.85)", "熱量強擴散均溫地球 (K=7.0)", "熱量弱擴散極端溫差地球 (K=1.0)"],
+    index=1
 )
 
-if preset == "太陽減弱寒冷化 (Frac_SC=0.85)":
-    default_frac_sc = 0.85
-    default_k = 3.87
-elif preset == "熱量強擴散均溫地球 (K=7.0)":
-    default_frac_sc = 1.0
-    default_k = 7.0
-elif preset == "熱量弱擴散極端溫差地球 (K=1.0)":
-    default_frac_sc = 1.0
-    default_k = 1.0
-else:
-    default_frac_sc = 1.0
-    default_k = 3.87
+if preset != st.session_state["ebm1d_preset"] and preset != "自訂參數 (Custom)":
+    st.session_state["ebm1d_preset"] = preset
+    if preset == "標準現今地球 (Frac_SC=1.0, K=3.87)":
+        set_param_value("sc_1d", 1370.0)
+        set_param_value("frac_sc_1d", 1.0)
+        set_param_value("k_diff_1d", 3.87)
+    elif preset == "太陽減弱寒冷化 (Frac_SC=0.85)":
+        set_param_value("frac_sc_1d", 0.85)
+        set_param_value("k_diff_1d", 3.87)
+    elif preset == "熱量強擴散均溫地球 (K=7.0)":
+        set_param_value("frac_sc_1d", 1.0)
+        set_param_value("k_diff_1d", 7.0)
+    elif preset == "熱量弱擴散極端溫差地球 (K=1.0)":
+        set_param_value("frac_sc_1d", 1.0)
+        set_param_value("k_diff_1d", 1.0)
 
-sc = st.sidebar.slider("太陽常數 $SC$ (W/m²)", 1000.0, 1600.0, 1370.0, 10.0)
-frac_sc = st.sidebar.slider("太陽強度因子 $Frac\\_SC$", 0.70, 1.30, default_frac_sc, 0.05)
-k_diff = st.sidebar.slider("大氣熱擴散係數 $K$ (W/m²/℃)", 0.5, 8.0, default_k, 0.1)
+sc = render_sync_input("太陽常數 SC (W/m²)", "sc_1d", 1000.0, 1600.0, 1370.0, 10.0, format="%.1f")
+frac_sc = render_sync_input("太陽強度因子 Frac_SC", "frac_sc_1d", 0.60, 1.40, 1.0, 0.02, format="%.2f")
+k_diff = render_sync_input("大氣熱擴散係數 K (W/m²/℃)", "k_diff_1d", 0.5, 9.0, 3.87, 0.1, format="%.2f")
 
-with st.sidebar.expander("🔬 Budyko 出射與反照率參數"):
-    a_param = st.slider("Budyko 常數 $A$ (W/m²)", 180.0, 260.0, 230.0, 5.0)
-    b_param = st.slider("Budyko 斜率 $B$ (W/m²/℃)", 1.5, 3.0, 2.17, 0.05)
-    tcrit = st.slider("結冰臨界溫度 $T_{crit}$ (℃)", -20.0, 0.0, -10.0, 1.0)
-    aice = st.slider("冰雪反照率 $a_{ice}$", 0.4, 0.8, 0.6, 0.05)
-    aland = st.slider("無冰反照率 $a$", 0.1, 0.5, 0.3, 0.05)
-    itera = st.slider("迭代收斂次數", 10, 100, 50, 5)
+with st.sidebar.expander("🔬 Budyko 出射與反照率參數 (滑桿 + 精確數值)", expanded=True):
+    a_param = render_sync_input("Budyko 常數 A (W/m²)", "a_param_1d", 180.0, 260.0, 230.0, 5.0, format="%.1f")
+    b_param = render_sync_input("Budyko 斜率 B (W/m²/℃)", "b_param_1d", 1.5, 3.5, 2.17, 0.05, format="%.2f")
+    tcrit = render_sync_input("結冰臨界溫度 T_crit (℃)", "tcrit_1d", -25.0, 5.0, -10.0, 1.0, format="%.1f")
+    aice = render_sync_input("冰雪反照率 a_ice", "aice_1d", 0.4, 0.8, 0.6, 0.02, format="%.2f")
+    aland = render_sync_input("無冰反照率 a", "aland_1d", 0.1, 0.5, 0.3, 0.02, format="%.2f")
+    itera = render_sync_input("迭代收斂次數", "itera_1d", 10, 100, 50, 5, is_int=True)
+
+# Dynamic Sweeper Controller
+param_specs_1d = {
+    "太陽強度因子 Frac_SC": {"key": "frac_sc_1d", "min": 0.60, "max": 1.40, "step": 0.02, "unit": ""},
+    "大氣熱擴散係數 K": {"key": "k_diff_1d", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
+    "太陽常數 SC": {"key": "sc_1d", "min": 1000.0, "max": 1600.0, "step": 10.0, "unit": "W/m²"},
+    "結冰臨界溫度 T_crit": {"key": "tcrit_1d", "min": -25.0, "max": 5.0, "step": 1.0, "unit": "℃"}
+}
+render_dynamic_controller(param_specs_1d, page_prefix="ebm1d")
 
 with st.expander("📐 點擊展開：1D EBM 數學原理與各緯度熱傳導公式"):
     st.markdown(r"""
