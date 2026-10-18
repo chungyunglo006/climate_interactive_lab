@@ -363,6 +363,12 @@ canvas {{
         <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設標準光度</button>
 
+        <span style="color: #64748b; margin-left: 8px;">視角範圍:</span>
+        <select id="sel_view_domain">
+            <option value="global" selected>🌐 全球對稱 (85°S ~ 85°N)</option>
+            <option value="north">🧭 北半球視角 (0° ~ 85°N)</option>
+        </select>
+
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
         <select id="sel_anim_target">
             <option value="l_val">太陽光度 L</option>
@@ -409,7 +415,7 @@ canvas {{
 <div class="charts-grid">
     <div class="chart-card">
         <div class="chart-header">
-            <div class="chart-title">🌸 各緯度物種分帶分佈 (60 FPS 空間演化)</div>
+            <div class="chart-title">🌸 各緯度物種分帶分佈</div>
             <div class="chart-legend">
                 <div class="legend-item"><div class="legend-color" style="background: #f8fafc;"></div> 白雛菊 (赤道)</div>
                 <div class="legend-item"><div class="legend-color" style="background: #475569;"></div> 黑雛菊 (極區)</div>
@@ -446,9 +452,14 @@ const SUNWT_1D = [0.5, 0.531, 0.624, 0.77, 0.892, 1.021, 1.12, 1.189, 1.219];
 const latCos = LATS_1D.map(l => Math.cos(l * Math.PI / 180.0));
 const sumCos = latCos.reduce((a, b) => a + b, 0);
 
+// Monotonic global coordinates [-85 to +85]
 const fullLats = [];
-for (let i = LATS_1D.length - 1; i >= 0; i--) fullLats.push(-LATS_1D[i]);
-for (let i = 0; i < LATS_1D.length; i++) fullLats.push(LATS_1D[i]);
+for (let i = 0; i < LATS_1D.length; i++) fullLats.push(-LATS_1D[i]);
+for (let i = LATS_1D.length - 1; i >= 0; i--) fullLats.push(LATS_1D[i]);
+
+// Northern hemisphere only [6 to 85]
+const northLats = [];
+for (let i = LATS_1D.length - 1; i >= 0; i--) northLats.push(LATS_1D[i]);
 
 let state = {{
     s0: {s0},
@@ -462,12 +473,14 @@ let state = {{
     a_param: {a_param},
     b_param: {b_param},
     itera: {itera},
+    viewDomain: 'global',
     isPlaying: false,
     pingPongDir: 1,
     simData: null
 }};
 
 // DOM Elements
+const selViewDomain = document.getElementById('sel_view_domain');
 const sliderL = document.getElementById('slider_l');
 const numL = document.getElementById('num_l');
 const sliderK = document.getElementById('slider_k');
@@ -583,24 +596,30 @@ function runSimulation() {{
         }}
     }}
 
-    // Symmetric arrays
+    // Full symmetric arrays (Monotonic from South Pole -85 to North Pole +85)
     const fullTemp = [], fullDead = [], fullAw = [], fullAb = [], fullAu = [];
-    for (let i = nLat - 1; i >= 0; i--) {{
-        fullTemp.push(temp[i]); fullDead.push(tempNobio[i]);
-        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(1.0 - aw[i] - ab[i]);
-    }}
     for (let i = 0; i < nLat; i++) {{
         fullTemp.push(temp[i]); fullDead.push(tempNobio[i]);
-        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(1.0 - aw[i] - ab[i]);
+        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(au[i]);
+    }}
+    for (let i = nLat - 1; i >= 0; i--) {{
+        fullTemp.push(temp[i]); fullDead.push(tempNobio[i]);
+        fullAw.push(aw[i]); fullAb.push(ab[i]); fullAu.push(au[i]);
+    }}
+
+    // Northern hemisphere only [6 to 85] (Equator to North Pole)
+    const northTemp = [], northDead = [], northAw = [], northAb = [], northAu = [];
+    for (let i = nLat - 1; i >= 0; i--) {{
+        northTemp.push(temp[i]); northDead.push(tempNobio[i]);
+        northAw.push(aw[i]); northAb.push(ab[i]); northAu.push(au[i]);
     }}
 
     const meanT = temp.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
     const meanDead = tempNobio.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
 
     state.simData = {{
-        lats: fullLats,
-        temp: fullTemp, dead: fullDead,
-        aw: fullAw, ab: fullAb, au: fullAu,
+        fullLats, fullTemp, fullDead, fullAw, fullAb, fullAu,
+        northLats, northTemp, northDead, northAw, northAb, northAu,
         meanT: meanT, meanDead: meanDead,
         eqW: aw[nLat - 1], poleB: ab[0]
     }};
@@ -609,6 +628,7 @@ function runSimulation() {{
 function drawStaticBackgrounds() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
+    const isNorth = state.viewDomain === 'north';
 
     // --- Chart 1 Static BG (Coverage) ---
     ctxBg1.clearRect(0, 0, width, height);
@@ -632,12 +652,12 @@ function drawStaticBackgrounds() {{
         ctxBg1.fillText((val * 100).toFixed(0) + '%', margin.left - 8, y);
     }});
 
-    const xTicks = [-90, -60, -30, 0, 30, 60, 90];
+    const xTicks = isNorth ? [0, 15, 30, 45, 60, 75, 90] : [-90, -60, -30, 0, 30, 60, 90];
     ctxBg1.textAlign = 'center';
     ctxBg1.textBaseline = 'top';
 
     xTicks.forEach(lat => {{
-        const x = margin.left + plotW * ((lat + 90.0) / 180.0);
+        const x = isNorth ? (margin.left + plotW * (lat / 90.0)) : (margin.left + plotW * ((lat + 90.0) / 180.0));
         ctxBg1.beginPath();
         ctxBg1.moveTo(x, margin.top);
         ctxBg1.lineTo(x, margin.top + plotH);
@@ -688,7 +708,7 @@ function drawStaticBackgrounds() {{
     ctxBg2.restore();
 
     xTicks.forEach(lat => {{
-        const x = margin.left + plotW * ((lat + 90.0) / 180.0);
+        const x = isNorth ? (margin.left + plotW * (lat / 90.0)) : (margin.left + plotW * ((lat + 90.0) / 180.0));
         ctxBg2.beginPath();
         ctxBg2.moveTo(x, margin.top);
         ctxBg2.lineTo(x, margin.top + plotH);
@@ -707,6 +727,15 @@ function renderDynamicTraces() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
     const d = state.simData;
+    const isNorth = state.viewDomain === 'north';
+    const lats = isNorth ? d.northLats : d.fullLats;
+    const awVals = isNorth ? d.northAw : d.fullAw;
+    const abVals = isNorth ? d.northAb : d.fullAb;
+    const auVals = isNorth ? d.northAu : d.fullAu;
+    const tempVals = isNorth ? d.northTemp : d.fullTemp;
+    const deadVals = isNorth ? d.northDead : d.fullDead;
+
+    const getX = lat => isNorth ? (margin.left + plotW * (lat / 90.0)) : (margin.left + plotW * ((lat + 90.0) / 180.0));
 
     // --- Chart 1: Coverage Lines ---
     ctxFg1.clearRect(0, 0, width, height);
@@ -720,9 +749,9 @@ function renderDynamicTraces() {{
     ctxFg1.lineWidth = 1.8;
     ctxFg1.setLineDash([4, 3]);
     ctxFg1.beginPath();
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - d.au[i]);
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - auVals[i]);
         if (i === 0) ctxFg1.moveTo(x, y);
         else ctxFg1.lineTo(x, y);
     }}
@@ -735,9 +764,9 @@ function renderDynamicTraces() {{
     ctxFg1.strokeStyle = '#64748b';
     ctxFg1.lineWidth = 2.8;
     ctxFg1.beginPath();
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - d.ab[i]);
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - abVals[i]);
         if (i === 0) ctxFg1.moveTo(x, y);
         else ctxFg1.lineTo(x, y);
     }}
@@ -749,9 +778,9 @@ function renderDynamicTraces() {{
     ctxFg1.strokeStyle = '#f8fafc';
     ctxFg1.lineWidth = 3.0;
     ctxFg1.beginPath();
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - d.aw[i]);
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - awVals[i]);
         if (i === 0) ctxFg1.moveTo(x, y);
         else ctxFg1.lineTo(x, y);
     }}
@@ -772,9 +801,9 @@ function renderDynamicTraces() {{
     ctxFg2.lineWidth = 2.2;
     ctxFg2.setLineDash([5, 4]);
     ctxFg2.beginPath();
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - (d.dead[i] - yMin2) / (yMax2 - yMin2));
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - (deadVals[i] - yMin2) / (yMax2 - yMin2));
         if (i === 0) ctxFg2.moveTo(x, y);
         else ctxFg2.lineTo(x, y);
     }}
@@ -787,9 +816,9 @@ function renderDynamicTraces() {{
     ctxFg2.strokeStyle = '#22c55e';
     ctxFg2.lineWidth = 3.2;
     ctxFg2.beginPath();
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - (d.temp[i] - yMin2) / (yMax2 - yMin2));
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - (tempVals[i] - yMin2) / (yMax2 - yMin2));
         if (i === 0) ctxFg2.moveTo(x, y);
         else ctxFg2.lineTo(x, y);
     }}
@@ -914,6 +943,12 @@ bindSync(sliderS0, numS0, 's0', true);
 
 btnTogglePlay.addEventListener('click', togglePlay);
 
+selViewDomain.addEventListener('change', e => {{
+    state.viewDomain = e.target.value;
+    drawStaticBackgrounds();
+    renderDynamicTraces();
+}});
+
 // Scenario Presets
 selPreset.addEventListener('change', e => {{
     const p = e.target.value;
@@ -934,6 +969,7 @@ function setParams(cfg) {{
     if (cfg.aw !== undefined) {{ state.alpha_w = cfg.aw; sliderAw.value = cfg.aw; numAw.value = cfg.aw; }}
     if (cfg.ab !== undefined) {{ state.alpha_b = cfg.ab; sliderAb.value = cfg.ab; numAb.value = cfg.ab; }}
     if (cfg.gamma !== undefined) {{ state.gamma_val = cfg.gamma; sliderGamma.value = cfg.gamma; numGamma.value = cfg.gamma; }}
+    drawStaticBackgrounds();
     runSimulation();
     renderDynamicTraces();
 }}
@@ -950,11 +986,17 @@ fg1.addEventListener('mousemove', e => {{
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         const normX = (mouseX - margin.left) / plotW;
-        const lat = -90.0 + normX * 180.0;
+        const isNorth = state.viewDomain === 'north';
+        const lat = isNorth ? (normX * 90.0) : (-90.0 + normX * 180.0);
         const d = state.simData;
         if (d) {{
+            const lats = isNorth ? d.northLats : d.fullLats;
+            const awVals = isNorth ? d.northAw : d.fullAw;
+            const abVals = isNorth ? d.northAb : d.fullAb;
+            const auVals = isNorth ? d.northAu : d.fullAu;
+            const tempVals = isNorth ? d.northTemp : d.fullTemp;
             let closestIdx = 0, minDiff = 999;
-            d.lats.forEach((l, idx) => {{
+            lats.forEach((l, idx) => {{
                 const diff = Math.abs(l - lat);
                 if (diff < minDiff) {{ minDiff = diff; closestIdx = idx; }}
             }});
@@ -962,8 +1004,8 @@ fg1.addEventListener('mousemove', e => {{
             tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX + 14) + 'px';
             tooltip.style.top = (e.clientY - 25) + 'px';
-            const latStr = d.lats[closestIdx] === 0 ? '赤道' : (d.lats[closestIdx] > 0 ? d.lats[closestIdx] + '°N' : Math.abs(d.lats[closestIdx]) + '°S');
-            tooltip.innerHTML = `緯度: ${{latStr}}<br>白雛菊: ${{(d.aw[closestIdx]*100).toFixed(1)}}%<br>黑雛菊: ${{(d.ab[closestIdx]*100).toFixed(1)}}%<br>均溫: ${{d.temp[closestIdx].toFixed(2)}}℃`;
+            const latStr = lats[closestIdx] === 0 ? '赤道' : (lats[closestIdx] > 0 ? lats[closestIdx] + '°N' : Math.abs(lats[closestIdx]) + '°S');
+            tooltip.innerHTML = `緯度: ${{latStr}}<br>白雛菊: ${{(awVals[closestIdx]*100).toFixed(1)}}%<br>黑雛菊: ${{(abVals[closestIdx]*100).toFixed(1)}}%<br>裸地: ${{(auVals[closestIdx]*100).toFixed(1)}}%<br>均溫: ${{tempVals[closestIdx].toFixed(2)}}℃`;
             return;
         }}
     }}
@@ -981,11 +1023,15 @@ fg2.addEventListener('mousemove', e => {{
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         const normX = (mouseX - margin.left) / plotW;
-        const lat = -90.0 + normX * 180.0;
+        const isNorth = state.viewDomain === 'north';
+        const lat = isNorth ? (normX * 90.0) : (-90.0 + normX * 180.0);
         const d = state.simData;
         if (d) {{
+            const lats = isNorth ? d.northLats : d.fullLats;
+            const tempVals = isNorth ? d.northTemp : d.fullTemp;
+            const deadVals = isNorth ? d.northDead : d.fullDead;
             let closestIdx = 0, minDiff = 999;
-            d.lats.forEach((l, idx) => {{
+            lats.forEach((l, idx) => {{
                 const diff = Math.abs(l - lat);
                 if (diff < minDiff) {{ minDiff = diff; closestIdx = idx; }}
             }});
@@ -993,9 +1039,9 @@ fg2.addEventListener('mousemove', e => {{
             tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX + 14) + 'px';
             tooltip.style.top = (e.clientY - 25) + 'px';
-            const latStr = d.lats[closestIdx] === 0 ? '赤道' : (d.lats[closestIdx] > 0 ? d.lats[closestIdx] + '°N' : Math.abs(d.lats[closestIdx]) + '°S');
-            const diffDead = d.temp[closestIdx] - d.tempNobio[closestIdx];
-            tooltip.innerHTML = `緯度: ${{latStr}}<br>調節溫度: ${{d.temp[closestIdx].toFixed(2)}}℃<br>死星基線: ${{d.tempNobio[closestIdx].toFixed(2)}}℃<br>調節溫差: ${{diffDead >= 0 ? '+' : ''}}${{diffDead.toFixed(2)}}℃`;
+            const latStr = lats[closestIdx] === 0 ? '赤道' : (lats[closestIdx] > 0 ? lats[closestIdx] + '°N' : Math.abs(lats[closestIdx]) + '°S');
+            const diffDead = tempVals[closestIdx] - deadVals[closestIdx];
+            tooltip.innerHTML = `緯度: ${{latStr}}<br>調節溫度: ${{tempVals[closestIdx].toFixed(2)}}℃<br>死星基線: ${{deadVals[closestIdx].toFixed(2)}}℃<br>調節溫差: ${{diffDead >= 0 ? '+' : ''}}${{diffDead.toFixed(2)}}℃`;
             return;
         }}
     }}

@@ -367,8 +367,14 @@ canvas {{
     </div>
 
     <div class="action-row">
-        <button class="btn" id="btn_toggle_play">▶️ 開始 60 FPS 絲滑動態演變</button>
+        <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設現代地球</button>
+
+        <span style="color: #64748b; margin-left: 8px;">視角範圍:</span>
+        <select id="sel_view_domain">
+            <option value="global" selected>🌐 全球對稱 (85°S ~ 85°N)</option>
+            <option value="north">🧭 北半球視角 (0° ~ 85°N)</option>
+        </select>
 
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
         <select id="sel_anim_target">
@@ -416,7 +422,7 @@ canvas {{
 <div class="charts-grid">
     <div class="chart-card">
         <div class="chart-header">
-            <div class="chart-title">🌐 緯度 vs 平衡溫度剖面 (60 FPS 絲滑形變)</div>
+            <div class="chart-title">🌐 緯度 vs 平衡溫度剖面</div>
             <div class="chart-legend">
                 <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div> 平衡溫度 (℃)</div>
                 <div class="legend-item"><div class="legend-color" style="background: #38bdf8; border-top: 1px dashed;"></div> 結冰臨界 (T_crit)</div>
@@ -452,10 +458,14 @@ const INIT_T_DEFAULT = [-15.0, -15.0, -5.0, 5.0, 10.0, 15.0, 18.0, 22.0, 24.0];
 const latCos = LATS_DEFAULT.map(lat => Math.cos(lat * Math.PI / 180.0));
 const sumCos = latCos.reduce((a, b) => a + b, 0);
 
-// Mirror coordinates for symmetric global display [-85 to +85]
+// Mirror coordinates for monotonic global display [-85 to +85]
 const fullLats = [];
-for (let i = LATS_DEFAULT.length - 1; i >= 0; i--) fullLats.push(-LATS_DEFAULT[i]);
-for (let i = 0; i < LATS_DEFAULT.length; i++) fullLats.push(LATS_DEFAULT[i]);
+for (let i = 0; i < LATS_DEFAULT.length; i++) fullLats.push(-LATS_DEFAULT[i]);
+for (let i = LATS_DEFAULT.length - 1; i >= 0; i--) fullLats.push(LATS_DEFAULT[i]);
+
+// Northern hemisphere only [6 to 85]
+const northLats = [];
+for (let i = LATS_DEFAULT.length - 1; i >= 0; i--) northLats.push(LATS_DEFAULT[i]);
 
 let state = {{
     sc: {sc},
@@ -467,12 +477,14 @@ let state = {{
     aland: {aland},
     tcrit: {tcrit},
     itera: {itera},
+    viewDomain: 'global',
     isPlaying: false,
     pingPongDir: 1,
     simData: null
 }};
 
 // DOM Elements
+const selViewDomain = document.getElementById('sel_view_domain');
 const sliderFracSc = document.getElementById('slider_frac_sc');
 const numFracSc = document.getElementById('num_frac_sc');
 const sliderK = document.getElementById('slider_k');
@@ -551,16 +563,24 @@ function runSimulation() {{
     const iceLats = LATS_DEFAULT.filter((lat, i) => temp[i] < state.tcrit);
     const iceEdge = iceLats.length > 0 ? Math.min(...iceLats) : 90.0;
 
-    // Full symmetric arrays for global lat display
+    // Full symmetric arrays for global lat display (Monotonic from South Pole -85 to North Pole +85)
     const fullTemp = [];
     const fullAlbedo = [];
-    for (let i = temp.length - 1; i >= 0; i--) {{ fullTemp.push(temp[i]); fullAlbedo.push(albedo[i]); }}
     for (let i = 0; i < temp.length; i++) {{ fullTemp.push(temp[i]); fullAlbedo.push(albedo[i]); }}
+    for (let i = temp.length - 1; i >= 0; i--) {{ fullTemp.push(temp[i]); fullAlbedo.push(albedo[i]); }}
+
+    // Northern hemisphere only [6 to 85]
+    const northTemp = [];
+    const northAlbedo = [];
+    for (let i = temp.length - 1; i >= 0; i--) {{ northTemp.push(temp[i]); northAlbedo.push(albedo[i]); }}
 
     state.simData = {{
-        lats: fullLats,
-        temp: fullTemp,
-        albedo: fullAlbedo,
+        fullLats: fullLats,
+        fullTemp: fullTemp,
+        fullAlbedo: fullAlbedo,
+        northLats: northLats,
+        northTemp: northTemp,
+        northAlbedo: northAlbedo,
         meanT: meanT,
         iceEdge: iceEdge,
         equatorT: temp[temp.length - 1],
@@ -572,6 +592,7 @@ function runSimulation() {{
 function drawStaticBackgrounds() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
+    const isNorth = state.viewDomain === 'north';
 
     // --- Chart 1 Static BG (Temperature) ---
     ctxBg1.clearRect(0, 0, width, height);
@@ -611,13 +632,13 @@ function drawStaticBackgrounds() {{
     ctxBg1.fillText('結冰臨界 T_crit ' + state.tcrit.toFixed(1) + '℃', margin.left + 8, yTcrit - 7);
     ctxBg1.restore();
 
-    // X Ticks: -90 to +90 deg
-    const xTicks = [-90, -60, -30, 0, 30, 60, 90];
+    // X Ticks
+    const xTicks = isNorth ? [0, 15, 30, 45, 60, 75, 90] : [-90, -60, -30, 0, 30, 60, 90];
     ctxBg1.textAlign = 'center';
     ctxBg1.textBaseline = 'top';
 
     xTicks.forEach(lat => {{
-        const x = margin.left + plotW * ((lat + 90.0) / 180.0);
+        const x = isNorth ? (margin.left + plotW * (lat / 90.0)) : (margin.left + plotW * ((lat + 90.0) / 180.0));
         ctxBg1.beginPath();
         ctxBg1.moveTo(x, margin.top);
         ctxBg1.lineTo(x, margin.top + plotH);
@@ -635,7 +656,6 @@ function drawStaticBackgrounds() {{
     ctxBg2.fillStyle = 'rgba(15, 23, 42, 0.45)';
     ctxBg2.fillRect(margin.left, margin.top, plotW, plotH);
 
-    const yMin2 = 0.0, yMax2 = 1.0;
     const yTicks2 = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
 
     ctxBg2.font = '11px "JetBrains Mono", monospace';
@@ -655,7 +675,7 @@ function drawStaticBackgrounds() {{
     }});
 
     xTicks.forEach(lat => {{
-        const x = margin.left + plotW * ((lat + 90.0) / 180.0);
+        const x = isNorth ? (margin.left + plotW * (lat / 90.0)) : (margin.left + plotW * ((lat + 90.0) / 180.0));
         ctxBg2.beginPath();
         ctxBg2.moveTo(x, margin.top);
         ctxBg2.lineTo(x, margin.top + plotH);
@@ -675,6 +695,12 @@ function renderDynamicTraces() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
     const d = state.simData;
+    const isNorth = state.viewDomain === 'north';
+    const lats = isNorth ? d.northLats : d.fullLats;
+    const tempVals = isNorth ? d.northTemp : d.fullTemp;
+    const albedoVals = isNorth ? d.northAlbedo : d.fullAlbedo;
+
+    const getX = lat => isNorth ? (margin.left + plotW * (lat / 90.0)) : (margin.left + plotW * ((lat + 90.0) / 180.0));
 
     // --- Chart 1: Temperature Profile ---
     ctxFg1.clearRect(0, 0, width, height);
@@ -691,18 +717,18 @@ function renderDynamicTraces() {{
     ctxFg1.lineWidth = 3.0;
     ctxFg1.beginPath();
 
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - (d.temp[i] - yMin1) / (yMax1 - yMin1));
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - (tempVals[i] - yMin1) / (yMax1 - yMin1));
         if (i === 0) ctxFg1.moveTo(x, y);
         else ctxFg1.lineTo(x, y);
     }}
     ctxFg1.stroke();
 
     // Data points markers
-    d.lats.forEach((lat, i) => {{
-        const x = margin.left + plotW * ((lat + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - (d.temp[i] - yMin1) / (yMax1 - yMin1));
+    lats.forEach((lat, i) => {{
+        const x = getX(lat);
+        const y = margin.top + plotH * (1.0 - (tempVals[i] - yMin1) / (yMax1 - yMin1));
         ctxFg1.fillStyle = '#ef4444';
         ctxFg1.beginPath();
         ctxFg1.arc(x, y, 4, 0, Math.PI * 2);
@@ -725,17 +751,17 @@ function renderDynamicTraces() {{
     ctxFg2.lineWidth = 2.8;
     ctxFg2.beginPath();
 
-    for (let i = 0; i < d.lats.length; i++) {{
-        const x = margin.left + plotW * ((d.lats[i] + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - d.albedo[i]);
+    for (let i = 0; i < lats.length; i++) {{
+        const x = getX(lats[i]);
+        const y = margin.top + plotH * (1.0 - albedoVals[i]);
         if (i === 0) ctxFg2.moveTo(x, y);
         else ctxFg2.lineTo(x, y);
     }}
     ctxFg2.stroke();
 
-    d.lats.forEach((lat, i) => {{
-        const x = margin.left + plotW * ((lat + 90.0) / 180.0);
-        const y = margin.top + plotH * (1.0 - d.albedo[i]);
+    lats.forEach((lat, i) => {{
+        const x = getX(lat);
+        const y = margin.top + plotH * (1.0 - albedoVals[i]);
         ctxFg2.fillStyle = '#00e5ff';
         ctxFg2.fillRect(x - 3.5, y - 3.5, 7, 7);
     }});
@@ -857,6 +883,12 @@ bindSync(sliderA, numA, 'a');
 
 btnTogglePlay.addEventListener('click', togglePlay);
 
+selViewDomain.addEventListener('change', e => {{
+    state.viewDomain = e.target.value;
+    drawStaticBackgrounds();
+    renderDynamicTraces();
+}});
+
 // Scenario Presets
 selPreset.addEventListener('change', e => {{
     const p = e.target.value;
@@ -894,18 +926,18 @@ btnReset.addEventListener('click', () => {{
 fg1.addEventListener('mousemove', e => {{
     const rect = fg1.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         const normX = (mouseX - margin.left) / plotW;
-        const lat = -90.0 + normX * 180.0;
+        const isNorth = state.viewDomain === 'north';
+        const lat = isNorth ? (normX * 90.0) : (-90.0 + normX * 180.0);
         const d = state.simData;
         if (d) {{
-            // Find closest lat
-            let closestIdx = 0;
-            let minDiff = 999;
-            d.lats.forEach((l, idx) => {{
+            const lats = isNorth ? d.northLats : d.fullLats;
+            const temps = isNorth ? d.northTemp : d.fullTemp;
+            const albs = isNorth ? d.northAlbedo : d.fullAlbedo;
+            let closestIdx = 0, minDiff = 999;
+            lats.forEach((l, idx) => {{
                 const diff = Math.abs(l - lat);
                 if (diff < minDiff) {{ minDiff = diff; closestIdx = idx; }}
             }});
@@ -913,8 +945,8 @@ fg1.addEventListener('mousemove', e => {{
             tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX + 14) + 'px';
             tooltip.style.top = (e.clientY - 25) + 'px';
-            const latStr = d.lats[closestIdx] === 0 ? '赤道' : (d.lats[closestIdx] > 0 ? d.lats[closestIdx] + '°N' : Math.abs(d.lats[closestIdx]) + '°S');
-            tooltip.innerHTML = `緯度: ${{latStr}}<br>平衡溫度: ${{d.temp[closestIdx].toFixed(2)}} ℃<br>反照率: ${{d.albedo[closestIdx].toFixed(2)}}`;
+            const latStr = lats[closestIdx] === 0 ? '赤道' : (lats[closestIdx] > 0 ? lats[closestIdx] + '°N' : Math.abs(lats[closestIdx]) + '°S');
+            tooltip.innerHTML = `緯度: ${{latStr}}<br>平衡溫度: ${{temps[closestIdx].toFixed(2)}} ℃<br>反照率: ${{albs[closestIdx].toFixed(2)}}`;
             return;
         }}
     }}
@@ -922,6 +954,41 @@ fg1.addEventListener('mousemove', e => {{
 }});
 
 fg1.addEventListener('mouseleave', () => {{
+    tooltip.style.display = 'none';
+}});
+
+// Tooltip on Chart 2
+fg2.addEventListener('mousemove', e => {{
+    const rect = fg2.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const plotW = width - margin.left - margin.right;
+    if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
+        const normX = (mouseX - margin.left) / plotW;
+        const isNorth = state.viewDomain === 'north';
+        const lat = isNorth ? (normX * 90.0) : (-90.0 + normX * 180.0);
+        const d = state.simData;
+        if (d) {{
+            const lats = isNorth ? d.northLats : d.fullLats;
+            const temps = isNorth ? d.northTemp : d.fullTemp;
+            const albs = isNorth ? d.northAlbedo : d.fullAlbedo;
+            let closestIdx = 0, minDiff = 999;
+            lats.forEach((l, idx) => {{
+                const diff = Math.abs(l - lat);
+                if (diff < minDiff) {{ minDiff = diff; closestIdx = idx; }}
+            }});
+
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY - 25) + 'px';
+            const latStr = lats[closestIdx] === 0 ? '赤道' : (lats[closestIdx] > 0 ? lats[closestIdx] + '°N' : Math.abs(lats[closestIdx]) + '°S');
+            tooltip.innerHTML = `緯度: ${{latStr}}<br>階梯反照率: ${{albs[closestIdx].toFixed(2)}}<br>狀態: ${{albs[closestIdx] >= state.aice ? '❄️ 冰雪覆蓋' : '🌱 裸地/海洋'}}<br>局地溫度: ${{temps[closestIdx].toFixed(2)}} ℃`;
+            return;
+        }}
+    }}
+    tooltip.style.display = 'none';
+}});
+
+fg2.addEventListener('mouseleave', () => {{
     tooltip.style.display = 'none';
 }});
 
