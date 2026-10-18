@@ -163,7 +163,7 @@ with tab1:
         fig_temp.add_hline(y=t_ice - 273.15, line_dash="dash", line_color="#38bdf8", annotation_text=f"冰封臨界溫 {t_ice-273.15:.1f}℃")
         fig_temp.add_hline(y=t_land - 273.15, line_dash="dash", line_color="#4ade80", annotation_text=f"無冰臨界溫 {t_land-273.15:.1f}℃")
         fig_temp.update_layout(get_plotly_layout("溫度隨時間演化歷程", "時間 (年)", "溫度 (℃)"))
-        st.plotly_chart(fig_temp, use_container_width=True)
+        st.plotly_chart(fig_temp, use_container_width=True, key="ebm0d_temp_chart")
 
     with chart_c2:
         fig_rad = go.Figure()
@@ -180,7 +180,7 @@ with tab1:
             mode="lines", line=dict(color="#a855f7", width=1.5, dash="dot"), name="淨不平衡通量 $R_{in}-R_{out}$"
         ))
         fig_rad.update_layout(get_plotly_layout("能量平衡收支通量", "時間 (年)", "輻射通量 (W/m²)"))
-        st.plotly_chart(fig_rad, use_container_width=True)
+        st.plotly_chart(fig_rad, use_container_width=True, key="ebm0d_rad_chart")
 
     # Data download
     csv = df_sim.to_csv(index=False).encode('utf-8')
@@ -269,7 +269,7 @@ with tab2:
         f"0D EBM 輻射收支交點分析 (目前 $S_0 = {s0:.1f}$ W/m²)",
         "全球平均溫度 $T$ (K)", "輻射通量 (W/m²)", height=520
     ))
-    st.plotly_chart(fig_eq, use_container_width=True)
+    st.plotly_chart(fig_eq, use_container_width=True, key="ebm0d_eq_chart")
 
 # Tab 3: Bifurcation Diagram & Hysteresis
 with tab3:
@@ -308,7 +308,7 @@ with tab3:
         "0D EBM 氣候分歧圖 (Bifurcation Diagram / S-curve)",
         "太陽常數 $S_0$ (W/m²)", "平衡溫度 $T^*$ (K)", height=540
     ))
-    st.plotly_chart(fig_bifur, use_container_width=True)
+    st.plotly_chart(fig_bifur, use_container_width=True, key="ebm0d_bifur_chart")
 
 # Tab 4: Transient Collapse Simulation
 with tab4:

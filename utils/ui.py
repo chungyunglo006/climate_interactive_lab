@@ -104,6 +104,30 @@ code, kbd, samp, pre {
 .stButton > button:hover {
     box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
 }
+
+/* Eliminate Streamlit rerun opacity flickering / grey ghosting */
+div[data-testid="stAppViewContainer"] [data-stale="true"],
+[data-stale="true"],
+.stElementContainer[data-stale="true"],
+[data-testid="stVerticalBlock"] > div[data-stale="true"],
+[data-testid="stMainBlockContainer"] [data-stale="true"] {
+    opacity: 1 !important;
+    filter: none !important;
+    transition: none !important;
+}
+
+/* Hide top-right running spinner strobe/flash */
+[data-testid="stStatusWidget"],
+[data-testid="stStatusWidget"] * {
+    visibility: hidden !important;
+    display: none !important;
+}
+
+/* Plotly smooth transitions without canvas flash */
+.js-plotly-plot, .plot-container, .plotly {
+    background-color: transparent !important;
+    transition: none !important;
+}
 </style>
 """
 
@@ -145,9 +169,10 @@ def render_stat_card(label, value, subtext=""):
 
 
 def get_plotly_layout(title="", xaxis_title="", yaxis_title="", height=480):
-    """Returns a unified, ultra-clean dark Plotly layout."""
+    """Returns a unified, ultra-clean dark Plotly layout with uirevision to prevent chart flickering."""
     return dict(
         title=dict(text=title, font=dict(family="Plus Jakarta Sans", size=16, color="#f8fafc")),
+        uirevision="constant",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(15, 23, 42, 0.45)",
         font=dict(family="Plus Jakarta Sans", color="#94a3b8"),
