@@ -35,55 +35,59 @@ render_hero(
 st.sidebar.header("⚙️ 1D 雛菊空間參數")
 
 if "daisy1d_preset" not in st.session_state:
-    st.session_state["daisy1d_preset"] = "標準緯度分化 (S0=2100, L=1.0, K=3.87)"
+with st.sidebar:
+    st.header("⚙️ 1D 雛菊生態參數")
 
-preset = st.sidebar.selectbox(
-    "🎯 預設情境 (Scenario Presets)",
-    ["自訂參數 (Custom)", "標準緯度分化 (S0=2100, L=1.0, K=3.87)", "低日照極區保溫主導 (S0=1800)", "高日照赤道降溫主導 (S0=2400)", "弱大氣擴散局部孤立 (K=1.5)"],
-    index=1
-)
+    if "daisy1d_preset" not in st.session_state:
+        st.session_state["daisy1d_preset"] = "標準緯度分化 (S0=2100, L=1.0, K=3.87)"
 
-if preset != st.session_state["daisy1d_preset"] and preset != "自訂參數 (Custom)":
-    st.session_state["daisy1d_preset"] = preset
-    if preset == "標準緯度分化 (S0=2100, L=1.0, K=3.87)":
-        set_param_value("s0_1dw", 2100.0)
-        set_param_value("l_val_1dw", 1.0)
-        set_param_value("k_diff_1dw", 3.87)
-    elif preset == "低日照極區保溫主導 (S0=1800)":
-        set_param_value("s0_1dw", 1800.0)
-        set_param_value("l_val_1dw", 1.0)
-        set_param_value("k_diff_1dw", 3.87)
-    elif preset == "高日照赤道降溫主導 (S0=2400)":
-        set_param_value("s0_1dw", 2400.0)
-        set_param_value("l_val_1dw", 1.0)
-        set_param_value("k_diff_1dw", 3.87)
-    elif preset == "弱大氣擴散局部孤立 (K=1.5)":
-        set_param_value("s0_1dw", 2100.0)
-        set_param_value("l_val_1dw", 1.0)
-        set_param_value("k_diff_1dw", 1.5)
+    preset = st.selectbox(
+        "🎯 預設情境 (Scenario Presets)",
+        ["自訂參數 (Custom)", "標準緯度分化 (S0=2100, L=1.0, K=3.87)", "低日照極區保溫主導 (S0=1800)", "高日照赤道降溫主導 (S0=2400)", "弱大氣擴散局部孤立 (K=1.5)"],
+        index=1
+    )
 
-s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dw", 1400.0, 2800.0, 2100.0, 50.0, format="%.1f")
-l_val = render_sync_input("太陽光度因子 L", "l_val_1dw", 0.6, 1.6, 1.0, 0.02, format="%.2f")
-k_diff = render_sync_input("大氣熱擴散傳遞 K (W/m²/℃)", "k_diff_1dw", 0.5, 9.0, 3.87, 0.1, format="%.2f")
+    if preset != st.session_state["daisy1d_preset"] and preset != "自訂參數 (Custom)":
+        st.session_state["daisy1d_preset"] = preset
+        if preset == "標準緯度分化 (S0=2100, L=1.0, K=3.87)":
+            set_param_value("s0_1dw", 2100.0)
+            set_param_value("l_val_1dw", 1.0)
+            set_param_value("k_diff_1dw", 3.87)
+        elif preset == "低日照極區保溫主導 (S0=1800)":
+            set_param_value("s0_1dw", 1800.0)
+            set_param_value("l_val_1dw", 1.0)
+            set_param_value("k_diff_1dw", 3.87)
+        elif preset == "高日照赤道降溫主導 (S0=2400)":
+            set_param_value("s0_1dw", 2400.0)
+            set_param_value("l_val_1dw", 1.0)
+            set_param_value("k_diff_1dw", 3.87)
+        elif preset == "弱大氣擴散局部孤立 (K=1.5)":
+            set_param_value("s0_1dw", 2100.0)
+            set_param_value("l_val_1dw", 1.0)
+            set_param_value("k_diff_1dw", 1.5)
 
-with st.sidebar.expander("🔬 生態與 Budyko 參數 (滑桿 + 精確數值)", expanded=True):
-    alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
-    alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_1dw", 0.1, 0.4, 0.25, 0.02, format="%.2f")
-    alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_1dw", 0.3, 0.7, 0.50, 0.02, format="%.2f")
-    q_val = render_sync_input("局地微氣候反饋 q (℃)", "q_val_1dw", 5.0, 40.0, 20.0, 1.0, format="%.1f")
-    gamma_val = render_sync_input("死亡率 γ", "gamma_val_1dw", 0.05, 0.6, 0.3, 0.02, format="%.2f")
-    a_param = render_sync_input("Budyko A", "a_param_1dw", 180.0, 260.0, 230.0, 5.0, format="%.1f")
-    b_param = render_sync_input("Budyko B", "b_param_1dw", 1.5, 3.5, 2.17, 0.05, format="%.2f")
-    itera = render_sync_input("總迭代步數", "itera_1dw", 30, 300, 150, 25, is_int=True)
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dw", 1400.0, 2800.0, 2100.0, 50.0, format="%.1f")
+    l_val = render_sync_input("太陽光度因子 L", "l_val_1dw", 0.6, 1.6, 1.0, 0.02, format="%.2f")
+    k_diff = render_sync_input("大氣熱擴散傳遞 K (W/m²/℃)", "k_diff_1dw", 0.5, 9.0, 3.87, 0.1, format="%.2f")
 
-# Dynamic Sweeper Controller
-param_specs_1dw = {
-    "太陽常數 S₀": {"key": "s0_1dw", "min": 1400.0, "max": 2800.0, "step": 50.0, "unit": "W/m²"},
-    "太陽光度 L": {"key": "l_val_1dw", "min": 0.6, "max": 1.6, "step": 0.02, "unit": ""},
-    "大氣擴散係數 K": {"key": "k_diff_1dw", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
-    "微氣候反饋 q": {"key": "q_val_1dw", "min": 5.0, "max": 40.0, "step": 1.0, "unit": "℃"}
-}
-render_dynamic_controller(param_specs_1dw, page_prefix="daisy1d")
+    with st.expander("🔬 生態與 Budyko 參數 (滑桿 + 精確數值)", expanded=False):
+        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_1dw", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_1dw", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+        q_val = render_sync_input("局地微氣候反饋 q (℃)", "q_val_1dw", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+        gamma_val = render_sync_input("死亡率 γ", "gamma_val_1dw", 0.05, 0.6, 0.3, 0.02, format="%.2f")
+        a_param = render_sync_input("Budyko A", "a_param_1dw", 180.0, 260.0, 230.0, 5.0, format="%.1f")
+        b_param = render_sync_input("Budyko B", "b_param_1dw", 1.5, 3.5, 2.17, 0.05, format="%.2f")
+        itera = render_sync_input("總迭代步數", "itera_1dw", 30, 300, 150, 25, is_int=True)
+
+    # Dynamic Sweeper Controller
+    param_specs_1dw = {
+        "太陽常數 S₀": {"key": "s0_1dw", "min": 1400.0, "max": 2800.0, "step": 50.0, "unit": "W/m²"},
+        "太陽光度 L": {"key": "l_val_1dw", "min": 0.6, "max": 1.6, "step": 0.02, "unit": ""},
+        "大氣擴散係數 K": {"key": "k_diff_1dw", "min": 0.5, "max": 9.0, "step": 0.2, "unit": "W/m²/℃"},
+        "微氣候反饋 q": {"key": "q_val_1dw", "min": 5.0, "max": 40.0, "step": 1.0, "unit": "℃"}
+    }
+    render_dynamic_controller(param_specs_1dw, page_prefix="daisy1d")
 
 with st.expander("📐 點擊展開：1D 雛菊世界生態與氣候耦合數學架構"):
     st.markdown(r"""

@@ -189,9 +189,9 @@ def render_sync_input(label, key, min_val, max_val, default_val, step,
     """
     Renders synchronized slider and number_input allowing users to either
     drag the slider or directly type numeric values.
+    Works inside expanders, sidebars, or main containers.
     """
-    if container is None:
-        container = st.sidebar
+    c = container if container is not None else st
 
     if key not in st.session_state:
         st.session_state[key] = default_val
@@ -224,8 +224,8 @@ def render_sync_input(label, key, min_val, max_val, default_val, step,
         st.session_state[key] = val
         st.session_state[slider_key] = val
 
-    container.markdown(f"**{label}**")
-    col1, col2 = container.columns([3, 2])
+    c.markdown(f"**{label}**")
+    col1, col2 = c.columns([3, 2])
     with col1:
         if is_int:
             st.slider(

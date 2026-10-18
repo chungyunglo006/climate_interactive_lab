@@ -37,74 +37,77 @@ render_hero(
     badges=["0D EBM", "Budyko-Sellers", "Ice-Albedo Feedback", "S-Curve", "Tipping Points"]
 )
 
-# Sidebar: Presets and Parameters
-st.sidebar.header("⚙️ 實驗控制面板")
+# Sidebar: Presets, Parameters and Dynamic Controller
+with st.sidebar:
+    st.header("⚙️ 實驗控制面板")
 
-if "ebm0d_current_preset" not in st.session_state:
-    st.session_state["ebm0d_current_preset"] = "現今溫暖地球 (Modern Earth)"
+    if "ebm0d_current_preset" not in st.session_state:
+        st.session_state["ebm0d_current_preset"] = "現今溫暖地球 (Modern Earth)"
 
-preset = st.sidebar.selectbox(
-    "🎯 預設情境 (Scenario Presets)",
-    ["自訂參數 (Custom)", "現今溫暖地球 (Modern Earth)", "冰球地球 (Snowball Earth)", "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)", "高太陽輻射超溫暖態"],
-    index=1
-)
+    preset = st.selectbox(
+        "🎯 預設情境 (Scenario Presets)",
+        ["自訂參數 (Custom)", "現今溫暖地球 (Modern Earth)", "冰球地球 (Snowball Earth)", "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)", "高太陽輻射超溫暖態"],
+        index=1
+    )
 
-if preset != st.session_state["ebm0d_current_preset"] and preset != "自訂參數 (Custom)":
-    st.session_state["ebm0d_current_preset"] = preset
-    if preset == "現今溫暖地球 (Modern Earth)":
-        set_param_value("s0", 1368.0)
-        set_param_value("t_init", 288.0)
-    elif preset == "冰球地球 (Snowball Earth)":
-        set_param_value("s0", 1200.0)
-        set_param_value("t_init", 230.0)
-    elif preset == "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)":
-        set_param_value("s0", 1288.6)
-        set_param_value("t_init", 280.0)
-    elif preset == "高太陽輻射超溫暖態":
-        set_param_value("s0", 1600.0)
-        set_param_value("t_init", 295.0)
+    if preset != st.session_state["ebm0d_current_preset"] and preset != "自訂參數 (Custom)":
+        st.session_state["ebm0d_current_preset"] = preset
+        if preset == "現今溫暖地球 (Modern Earth)":
+            set_param_value("s0", 1368.0)
+            set_param_value("t_init", 288.0)
+        elif preset == "冰球地球 (Snowball Earth)":
+            set_param_value("s0", 1200.0)
+            set_param_value("t_init", 230.0)
+        elif preset == "第一臨界點失控崩潰 (Tipping Collapse ~1288 W/m²)":
+            set_param_value("s0", 1288.6)
+            set_param_value("t_init", 280.0)
+        elif preset == "高太陽輻射超溫暖態":
+            set_param_value("s0", 1600.0)
+            set_param_value("t_init", 295.0)
 
-s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0", min_val=800.0, max_val=2000.0, default_val=1368.0, step=5.0, format="%.1f")
-t_init = render_sync_input("初始溫度 T_init (K)", "t_init", min_val=200.0, max_val=320.0, default_val=288.0, step=1.0, format="%.1f")
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0", min_val=800.0, max_val=2000.0, default_val=1368.0, step=5.0, format="%.1f")
+    t_init = render_sync_input("初始溫度 T_init (K)", "t_init", min_val=200.0, max_val=320.0, default_val=288.0, step=1.0, format="%.1f")
 
-with st.sidebar.expander("🔬 進階物性參數 (滑桿 + 精確數值輸入)", expanded=True):
-    alpha_ice = render_sync_input("冰雪反照率 α_ice", "alpha_ice", 0.4, 0.8, 0.6, 0.01, format="%.2f")
-    alpha_land = render_sync_input("陸地反照率 α_land", "alpha_land", 0.1, 0.5, 0.3, 0.01, format="%.2f")
-    t_ice = render_sync_input("冰雪臨界溫度 T_ice (K)", "t_ice", 240.0, 275.0, 263.0, 1.0, format="%.1f")
-    t_land = render_sync_input("暖地臨界溫度 T_land (K)", "t_land", 270.0, 300.0, 283.0, 1.0, format="%.1f")
-    epsilon = render_sync_input("有效發射率 ε (溫室效應)", "epsilon", 0.4, 0.9, 0.62, 0.01, format="%.2f")
-    dt = render_sync_input("時間步長 Δt (年)", "dt", 0.01, 0.5, 0.1, 0.01, format="%.2f")
-    itera = render_sync_input("總迭代步數", "itera", 50, 500, 200, 25, is_int=True)
+    with st.expander("🔬 進階物性參數 (滑桿 + 精確數值輸入)", expanded=False):
+        alpha_ice = render_sync_input("冰雪反照率 α_ice", "alpha_ice", 0.4, 0.8, 0.6, 0.01, format="%.2f")
+        alpha_land = render_sync_input("陸地反照率 α_land", "alpha_land", 0.1, 0.5, 0.3, 0.01, format="%.2f")
+        t_ice = render_sync_input("冰雪臨界溫度 T_ice (K)", "t_ice", 240.0, 275.0, 263.0, 1.0, format="%.1f")
+        t_land = render_sync_input("暖地臨界溫度 T_land (K)", "t_land", 270.0, 300.0, 283.0, 1.0, format="%.1f")
+        epsilon = render_sync_input("有效發射率 ε (溫室效應)", "epsilon", 0.4, 0.9, 0.62, 0.01, format="%.2f")
+        dt = render_sync_input("時間步長 Δt (年)", "dt", 0.01, 0.5, 0.1, 0.01, format="%.2f")
+        itera = render_sync_input("總迭代步數", "itera", 50, 500, 200, 25, is_int=True)
 
-# Dynamic Parameter Sweeper / Animation Controller
-param_specs_0d = {
-    "太陽常數 S₀": {"key": "s0", "min": 800.0, "max": 2000.0, "step": 10.0, "unit": "W/m²"},
-    "初始溫度 T_init": {"key": "t_init", "min": 200.0, "max": 320.0, "step": 2.0, "unit": "K"},
-    "冰雪反照率 α_ice": {"key": "alpha_ice", "min": 0.4, "max": 0.8, "step": 0.02, "unit": ""},
-    "陸地反照率 α_land": {"key": "alpha_land", "min": 0.1, "max": 0.5, "step": 0.02, "unit": ""},
-    "有效發射率 ε": {"key": "epsilon", "min": 0.4, "max": 0.9, "step": 0.02, "unit": ""},
-    "冰雪臨界溫 T_ice": {"key": "t_ice", "min": 240.0, "max": 275.0, "step": 1.0, "unit": "K"},
-    "暖地臨界溫 T_land": {"key": "t_land", "min": 270.0, "max": 300.0, "step": 1.0, "unit": "K"}
-}
-render_dynamic_controller(param_specs_0d, page_prefix="ebm0d")
+    # Dynamic Parameter Sweeper / Animation Controller
+    param_specs_0d = {
+        "太陽常數 S₀": {"key": "s0", "min": 800.0, "max": 2000.0, "step": 10.0, "unit": "W/m²"},
+        "初始溫度 T_init": {"key": "t_init", "min": 200.0, "max": 320.0, "step": 2.0, "unit": "K"},
+        "冰雪反照率 α_ice": {"key": "alpha_ice", "min": 0.4, "max": 0.8, "step": 0.02, "unit": ""},
+        "陸地反照率 α_land": {"key": "alpha_land", "min": 0.1, "max": 0.5, "step": 0.02, "unit": ""},
+        "有效發射率 ε": {"key": "epsilon", "min": 0.4, "max": 0.9, "step": 0.02, "unit": ""},
+        "冰雪臨界溫 T_ice": {"key": "t_ice", "min": 240.0, "max": 275.0, "step": 1.0, "unit": "K"},
+        "暖地臨界溫 T_land": {"key": "t_land", "min": 270.0, "max": 300.0, "step": 1.0, "unit": "K"}
+    }
+    render_dynamic_controller(param_specs_0d, page_prefix="ebm0d")
 
 # Mathematical Principle Expander
 with st.expander("📐 點擊展開：模型數學原理與方程式"):
     st.markdown(r"""
     ### 數學公式說明
     零維能量平衡模型將地球視為單一均質系統，熱力學方程式為：
-    $$C_{\text{ocean}} \frac{dT}{dt} = R_{\text{in}} - R_{\text{out}} = \frac{S_0}{4}(1 - \alpha(T)) - \epsilon \sigma T^4$$
+    """)
+    st.latex(r"C_{\text{ocean}} \frac{dT}{dt} = R_{\text{in}} - R_{\text{out}} = \frac{S_0}{4}(1 - \alpha(T)) - \epsilon \sigma T^4")
+    st.markdown(r"""
     其中：
     - $S_0$：太陽常數 (約 $1368 \text{ W/m}^2$)，因地球自轉與球體幾何面積比，地表平均入射為 $S_0 / 4$。
     - $\sigma = 5.670374 \times 10^{-8} \text{ W/m}^2\text{K}^4$ 為 Stefan-Boltzmann 常數。
     - $\epsilon$ 為大氣長波有效發射率（代表溫室氣體捕捉後穿透大氣輻射至太空之比例，典型值 $\approx 0.62$）。
     - 反照率 $\alpha(T)$ 隨溫度呈現三段式冰雪反饋：
-    $$\alpha(T) = \begin{cases}
+    """)
+    st.latex(r"""\alpha(T) = \begin{cases}
     \alpha_{\text{ice}}, & T \le T_{\text{ice}} \\
     \alpha_{\text{ice}} + (\alpha_{\text{land}} - \alpha_{\text{ice}}) \frac{T - T_{\text{ice}}}{T_{\text{land}} - T_{\text{ice}}}, & T_{\text{ice}} < T < T_{\text{land}} \\
     \alpha_{\text{land}}, & T \ge T_{\text{land}}
-    \end{cases}$$
-    """)
+    \end{cases}""")
 
 # Main Tabs for Experiments
 tab1, tab2, tab3, tab4 = st.tabs([
