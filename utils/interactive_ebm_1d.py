@@ -23,14 +23,24 @@ def get_interactive_ebm1d_html(
     margin: 0;
     padding: 0;
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}}
+
+canvas, .stat-card, .panel-header {{
     user-select: none;
+    -webkit-user-select: none;
+}}
+
+input, select, textarea, .val-input {{
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    pointer-events: auto !important;
 }}
 
 body {{
     background-color: transparent;
     color: #f8fafc;
     overflow-x: hidden;
-    padding: 10px 4px 20px 4px;
+    padding: 6px 4px 14px 4px;
 }}
 
 .control-panel {{
@@ -267,7 +277,7 @@ select:focus, input[type="number"].inline-input:focus {{
 .canvas-container {{
     position: relative;
     width: 100%;
-    height: 420px;
+    height: 350px;
 }}
 
 canvas {{
@@ -807,7 +817,7 @@ function togglePlay() {{
         btnTogglePlay.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
         animFrameId = requestAnimationFrame(animationStep);
     }} else {{
-        btnTogglePlay.innerText = '▶️ 開始 60 FPS 絲滑動態演變';
+        btnTogglePlay.innerText = '▶️ 開始動態演變';
         btnTogglePlay.style.background = 'linear-gradient(135deg, #00e5ff 0%, #0284c7 100%)';
         if (animFrameId) cancelAnimationFrame(animFrameId);
     }}
@@ -822,15 +832,20 @@ function bindSync(slider, numInput, stateKey, isInt=false) {{
         renderDynamicTraces();
     }});
 
-    numInput.addEventListener('input', e => {{
-        const v = isInt ? parseInt(e.target.value) : parseFloat(e.target.value);
+    const onNumChange = e => {{
+        const raw = e.target.value;
+        if (raw === '' || raw === '-') return;
+        const v = isInt ? parseInt(raw) : parseFloat(raw);
         if (!isNaN(v)) {{
             slider.value = v;
             state[stateKey] = v;
             runSimulation();
             renderDynamicTraces();
         }}
-    }});
+    }};
+
+    numInput.addEventListener('input', onNumChange);
+    numInput.addEventListener('change', onNumChange);
 }}
 
 bindSync(sliderFracSc, numFracSc, 'frac_sc');

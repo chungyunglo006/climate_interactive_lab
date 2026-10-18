@@ -234,3 +234,79 @@ def run_ebm_transient_collapse(S0_start=1368.0, S0_end=1200.0, S0_steps=20,
         })
 
     return results
+
+
+def run_ebm_continuous_transient_collapse(
+    S0_start=1368.0, S0_min=1180.0, S0_max=1750.0,
+    ramp_down_years=80.0, stay_cold_years=20.0, ramp_up_years=80.0,
+    T_init=288.15, alpha_ice=0.6, alpha_land=0.3,
+    T_ice=263.0, T_land=283.0, epsilon=0.62, C_ocean=2.09e8, dt=0.05
+):
+    """
+    連續時間動態數值積分 (Continuous ODE Integration) 模擬瞬態氣候崩潰與解凍遲滯。
+    太陽輻射 S(t) 平滑演化：
+    1. 溫暖期平滑衰退至冰期 (S0_start -> S0_min)
+    2. 深度冰球期 (維持 S0_min)
+    3. 增溫解凍期 (S0_min -> S0_max)
+    回傳高解析度時間序列 DataFrame。
+    """
+    sigma = 5.670374e-8
+    seconds_per_year = 3.154e7
+    dt_sec = dt * seconds_per_year
+
+    total_years = ramp_down_years + stay_cold_years + ramp_up_years
+    total_steps = int(np.ceil(total_years / dt))
+
+    t_list = []
+    s0_list = []
+    T_list = []
+    alpha_list = []
+    R_in_list = []
+    R_out_list = []
+    dTdt_list = []
+
+    T = float(T_init)
+
+    for step in range(total_steps + 1):
+        t = step * dt
+
+        # Determine solar constant S0(t)
+        if t <= ramp_down_years:
+            frac = t / ramp_down_years
+            s0_t = S0_start + (S0_min - S0_start) * frac
+        elif t <= ramp_down_years + stay_cold_years:
+            s0_t = S0_min
+        else:
+            frac = (t - ramp_down_years - stay_cold_years) / ramp_up_years
+            s0_t = S0_min + (S0_max - S0_min) * min(1.0, frac)
+
+        alpha = get_albedo(T, alpha_ice, alpha_land, T_ice, T_land)
+        R_in = (s0_t / 4.0) * (1.0 - alpha)
+        R_out = epsilon * sigma * (T ** 4)
+        net_flux = R_in - R_out
+
+        dTdt = (net_flux / C_ocean) * seconds_per_year  # K / year
+
+        t_list.append(t)
+        s0_list.append(s0_t)
+        T_list.append(T)
+        alpha_list.append(alpha)
+        R_in_list.append(R_in)
+        R_out_list.append(R_out)
+        dTdt_list.append(dTdt)
+
+        # RK4 or Euler integration
+        T = T + (net_flux / C_ocean) * dt_sec
+
+    return pd.DataFrame({
+        "時間 (年)": t_list,
+        "太陽常數 (W/m²)": s0_list,
+        "溫度 (K)": T_list,
+        "溫度 (℃)": np.array(T_list) - 273.15,
+        "反照率 (Albedo)": alpha_list,
+        "入射能量 (W/m²)": R_in_list,
+        "出射能量 (W/m²)": R_out_list,
+        "淨不平衡通量 (W/m²)": np.array(R_in_list) - np.array(R_out_list),
+        "升降溫速率 (℃/年)": dTdt_list
+    })
+

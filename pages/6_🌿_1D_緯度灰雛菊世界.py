@@ -11,7 +11,9 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart
+    render_plotly_chart,
+    render_sync_input,
+    set_param_value
 )
 from models.daisy_1d import run_daisyworld_with_grey_1d
 import streamlit.components.v1 as components
@@ -28,45 +30,71 @@ apply_custom_styles()
 render_hero(
     title="一維緯度灰雛菊世界 (1D Latitudinal Grey Daisyworld)",
     subtitle="在空間維度上引入中性反照率的第三物種（灰雛菊），探討三物種在不同緯度的空間競爭、棲位劃分與對氣候調節的影響。",
-    badges=["1D Grey Daisyworld", "3-Species Spatial Competition", "Niche Differentiation", "Neutral Feedbacks", "60 FPS Canvas"]
+    badges=["1D Grey Daisyworld", "3-Species Spatial Competition", "Niche Differentiation", "Neutral Feedbacks"]
 )
 
-# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
+# Sidebar: Master Unified Control Panel
 with st.sidebar:
-    st.header("🌿 1D 灰雛菊空間實驗室")
+    st.header("🎛️ 實驗參數統一控制面板")
+
+    preset = st.selectbox(
+        "📌 預設實驗場景",
+        [
+            "自訂參數",
+            "標準三物種共存 (L=1.0)",
+            "高光度白灰優勢 (L=1.20)",
+            "低光度黑灰優勢 (L=0.85)",
+            "強大氣經向熱輸送 (K=6.0)",
+            "弱大氣經向熱輸送 (K=1.5)"
+        ],
+        index=0
+    )
+
+    if preset != "自訂參數":
+        if preset == "標準三物種共存 (L=1.0)":
+            set_param_value("s0_1dwg", 2100.0)
+            set_param_value("l_val_1dwg", 1.0)
+            set_param_value("k_diff_1dwg", 3.87)
+        elif preset == "高光度白灰優勢 (L=1.20)":
+            set_param_value("s0_1dwg", 2100.0)
+            set_param_value("l_val_1dwg", 1.20)
+            set_param_value("k_diff_1dwg", 3.87)
+        elif preset == "低光度黑灰優勢 (L=0.85)":
+            set_param_value("s0_1dwg", 2100.0)
+            set_param_value("l_val_1dwg", 0.85)
+            set_param_value("k_diff_1dwg", 3.87)
+        elif preset == "強大氣經向熱輸送 (K=6.0)":
+            set_param_value("s0_1dwg", 2100.0)
+            set_param_value("l_val_1dwg", 1.0)
+            set_param_value("k_diff_1dwg", 6.0)
+        elif preset == "弱大氣經向熱輸送 (K=1.5)":
+            set_param_value("s0_1dwg", 2100.0)
+            set_param_value("l_val_1dwg", 1.0)
+            set_param_value("k_diff_1dwg", 1.5)
+
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dwg", 1200.0, 2800.0, 2100.0, 20.0, format="%.1f")
+    l_val = render_sync_input("太陽光度因子 L", "l_val_1dwg", 0.5, 1.8, 1.0, 0.02, format="%.2f")
+    k_diff = render_sync_input("大氣熱輸送係數 K (W/m²/℃)", "k_diff_1dwg", 0.5, 10.0, 3.87, 0.1, format="%.2f")
+
+    with st.expander("🔬 反照率與物性參數 (滑桿 + 精確數值)", expanded=False):
+        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_1dwg", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+        alpha_g = render_sync_input("灰雛菊反照率 α_g (中性)", "alpha_g_1dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_1dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+        q_val = render_sync_input("微氣候係數 q (℃)", "q_val_1dwg", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+        gamma_val = render_sync_input("死亡率 γ", "gamma_val_1dwg", 0.05, 0.6, 0.30, 0.02, format="%.2f")
+        ag_init = render_sync_input("灰雛菊初始覆蓋率", "ag_init_1dwg", 0.001, 0.2, 0.01, 0.005, format="%.3f")
+        a_param = render_sync_input("OLR 截距 A (W/m²)", "a_param_1dwg", 150.0, 300.0, 230.0, 5.0, format="%.1f")
+        b_param = render_sync_input("OLR 斜率 B (W/m²/℃)", "b_param_1dwg", 1.0, 4.0, 2.17, 0.05, format="%.2f")
+        itera = render_sync_input("迭代步數", "itera_1dwg", 30, 300, 150, 10, is_int=True)
+
     st.markdown("""
-    **實驗特色**
-    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
-    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
-    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
-    
     ---
     **三物種空間棲位機制**
     - **黑雛菊 ($a_b$)**：低反照率 (0.25)，吸收微弱太陽輻射，在寒冷的高緯極區具優勢。
     - **白雛菊 ($a_w$)**：高反照率 (0.75)，反射過剩陽光，在炎熱的低緯赤道具優勢。
-    - **灰雛菊 ($a_g$)**：中性反照率 (0.50)，在溫度適中的中緯度溫帶地區具競爭力，但無法應對極端溫度的兩極與赤道。
-    
-    ---
-    **參考基準**
-    - 太陽常數 $S_0$：$2100$ W/m²
-    - 大氣擴散係數 $K$：$3.87$ W/m²/℃
-    - 灰雛菊反照率：$0.50$
+    - **灰雛菊 ($a_g$)**：中性反照率 (0.50)，在溫度適中的中緯度溫帶地區具競爭力。
     """)
-
-# Default parameters
-s0 = 2100.0
-l_val = 1.0
-k_diff = 3.87
-alpha_w = 0.75
-alpha_b = 0.25
-alpha_g = 0.50
-alpha_u = 0.50
-q_val = 20.0
-gamma_val = 0.30
-ag_init = 0.01
-a_param = 230.0
-b_param = 2.17
-itera = 150
 
 # Run Simulation
 history_grey_1d, lats_grey_1d, temp_nobio_g = run_daisyworld_with_grey_1d(
@@ -89,19 +117,19 @@ with tab1:
 
     render_engine = st.radio(
         "圖表渲染模式",
-        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        ["⚡ 動態演變畫布", "📊 標準 Plotly 向量圖表"],
         horizontal=True,
         key="daisygrey1d_engine_choice"
     )
 
-    if "60 FPS" in render_engine:
+    if "動態演變" in render_engine:
         components.html(
             get_interactive_daisy_grey_1d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
                 q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera
             ),
-            height=820,
-            scrolling=False
+            height=890,
+            scrolling=True
         )
     else:
         col1, col2, col3, col4, col5 = st.columns(5)

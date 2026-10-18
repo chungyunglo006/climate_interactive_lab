@@ -23,7 +23,11 @@ def get_interactive_daisy_grey_0d_html(
     margin: 0;
     padding: 0;
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-    user-select: none;
+}}
+
+input, select, textarea {{
+    user-select: text !important;
+    pointer-events: auto !important;
 }}
 
 body {{
@@ -267,7 +271,7 @@ select:focus, input[type="number"].inline-input:focus {{
 .canvas-container {{
     position: relative;
     width: 100%;
-    height: 420px;
+    height: 350px;
 }}
 
 canvas {{
@@ -356,7 +360,7 @@ canvas {{
     </div>
 
     <div class="action-row">
-        <button class="btn" id="btn_toggle_play">▶️ 開始 60 FPS 絲滑動態演變</button>
+        <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設標準光度</button>
 
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
@@ -887,7 +891,7 @@ function togglePlay() {{
         btnTogglePlay.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
         animFrameId = requestAnimationFrame(animationStep);
     }} else {{
-        btnTogglePlay.innerText = '▶️ 開始 60 FPS 絲滑動態演變';
+        btnTogglePlay.innerText = '▶️ 開始動態演變';
         btnTogglePlay.style.background = 'linear-gradient(135deg, #00e5ff 0%, #0284c7 100%)';
         if (animFrameId) cancelAnimationFrame(animFrameId);
     }}
@@ -902,7 +906,7 @@ function bindSync(slider, numInput, stateKey) {{
         renderDynamicTraces();
     }});
 
-    numInput.addEventListener('input', e => {{
+    const updateFromNum = e => {{
         const v = parseFloat(e.target.value);
         if (!isNaN(v)) {{
             slider.value = v;
@@ -910,7 +914,9 @@ function bindSync(slider, numInput, stateKey) {{
             runSimulation();
             renderDynamicTraces();
         }}
-    }});
+    }};
+    numInput.addEventListener('input', updateFromNum);
+    numInput.addEventListener('change', updateFromNum);
 }}
 
 bindSync(sliderL, numL, 'l_val');
@@ -972,6 +978,30 @@ fg1.addEventListener('mousemove', e => {{
 }});
 
 fg1.addEventListener('mouseleave', () => {{
+    tooltip.style.display = 'none';
+}});
+
+// Tooltip on Chart 2
+fg2.addEventListener('mousemove', e => {{
+    const rect = fg2.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const plotW = width - margin.left - margin.right;
+    if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
+        const normX = (mouseX - margin.left) / plotW;
+        const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
+        const d = state.simData;
+        if (d) {{
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY - 25) + 'px';
+            tooltip.innerHTML = `時間: ${{d.t[idx].toFixed(1)}}<br>行星均溫: ${{d.Tp[idx].toFixed(2)}}℃<br>白雛菊局地: ${{d.Tw[idx].toFixed(2)}}℃<br>黑雛菊局地: ${{d.Tb[idx].toFixed(2)}}℃<br>灰雛菊局地: ${{d.Tg[idx].toFixed(2)}}℃<br>死星基線: ${{d.Tnobio.toFixed(1)}}℃`;
+            return;
+        }}
+    }}
+    tooltip.style.display = 'none';
+}});
+
+fg2.addEventListener('mouseleave', () => {{
     tooltip.style.display = 'none';
 }});
 

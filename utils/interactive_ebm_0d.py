@@ -23,14 +23,24 @@ def get_interactive_ebm0d_html(
     margin: 0;
     padding: 0;
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}}
+
+canvas, .stat-card, .panel-header {{
     user-select: none;
+    -webkit-user-select: none;
+}}
+
+input, select, textarea, .val-input {{
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    pointer-events: auto !important;
 }}
 
 body {{
     background-color: transparent;
     color: #f8fafc;
     overflow-x: hidden;
-    padding: 10px 4px 20px 4px;
+    padding: 6px 4px 14px 4px;
 }}
 
 .control-panel {{
@@ -274,7 +284,7 @@ select:focus, input[type="number"].inline-input:focus {{
 .canvas-container {{
     position: relative;
     width: 100%;
-    height: 420px;
+    height: 350px;
 }}
 
 canvas {{
@@ -413,7 +423,7 @@ canvas {{
     <!-- Chart 1: Temperature Evolution -->
     <div class="chart-card">
         <div class="chart-header">
-            <div class="chart-title">📈 溫度隨時間演化歷程 (60 FPS 硬件平滑渲染)</div>
+            <div class="chart-title">📈 溫度隨時間演化歷程 (動態演變畫布)</div>
             <div class="chart-legend">
                 <div class="legend-item"><div class="legend-color" style="background: #00e5ff;"></div> 地表溫度 (℃)</div>
                 <div class="legend-item"><div class="legend-color" style="background: #38bdf8; border-top: 1px dashed;"></div> 冰封臨界 ({t_ice - 273.15:.1f}℃)</div>
@@ -870,7 +880,7 @@ function togglePlay() {{
         btnTogglePlay.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
         animFrameId = requestAnimationFrame(animationStep);
     }} else {{
-        btnTogglePlay.innerText = '▶️ 開始 60 FPS 絲滑動態演變';
+        btnTogglePlay.innerText = '▶️ 開始動態演變';
         btnTogglePlay.style.background = 'linear-gradient(135deg, #00e5ff 0%, #0284c7 100%)';
         if (animFrameId) cancelAnimationFrame(animFrameId);
     }}
@@ -886,15 +896,20 @@ function bindSync(slider, numInput, stateKey, isInt=false) {{
         renderDynamicTraces();
     }});
 
-    numInput.addEventListener('input', e => {{
-        const v = isInt ? parseInt(e.target.value) : parseFloat(e.target.value);
+    const onNumChange = e => {{
+        const raw = e.target.value;
+        if (raw === '' || raw === '-') return;
+        const v = isInt ? parseInt(raw) : parseFloat(raw);
         if (!isNaN(v)) {{
             slider.value = v;
             state[stateKey] = v;
             runSimulation();
             renderDynamicTraces();
         }}
-    }});
+    }};
+
+    numInput.addEventListener('input', onNumChange);
+    numInput.addEventListener('change', onNumChange);
 }}
 
 bindSync(sliderS0, numS0, 's0', true);
@@ -958,6 +973,33 @@ fg1.addEventListener('mousemove', e => {{
 }});
 
 fg1.addEventListener('mouseleave', () => {{
+    tooltip.style.display = 'none';
+}});
+
+// Interactive Tooltip Hover on Chart 2 (Radiation Fluxes)
+fg2.addEventListener('mousemove', e => {{
+    const rect = fg2.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const plotW = width - margin.left - margin.right;
+    if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
+        const normX = (mouseX - margin.left) / plotW;
+        const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
+        const d = state.simData;
+        if (d) {{
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY - 25) + 'px';
+            const net = d.Rin[idx] - d.Rout[idx];
+            tooltip.innerHTML = `時間: ${{d.t[idx].toFixed(1)}} 年<br>入射 R_in: ${{d.Rin[idx].toFixed(1)}} W/m²<br>出射 R_out: ${{d.Rout[idx].toFixed(1)}} W/m²<br>淨通量: ${{net.toFixed(2)}} W/m²`;
+            return;
+        }}
+    }}
+    tooltip.style.display = 'none';
+}});
+
+fg2.addEventListener('mouseleave', () => {{
     tooltip.style.display = 'none';
 }});
 

@@ -23,7 +23,11 @@ def get_interactive_daisy1d_html(
     margin: 0;
     padding: 0;
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-    user-select: none;
+}}
+
+input, select, textarea {{
+    user-select: text !important;
+    pointer-events: auto !important;
 }}
 
 body {{
@@ -267,7 +271,7 @@ select:focus, input[type="number"].inline-input:focus {{
 .canvas-container {{
     position: relative;
     width: 100%;
-    height: 420px;
+    height: 350px;
 }}
 
 canvas {{
@@ -356,7 +360,7 @@ canvas {{
     </div>
 
     <div class="action-row">
-        <button class="btn" id="btn_toggle_play">▶️ 開始 60 FPS 絲滑動態演變</button>
+        <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設標準光度</button>
 
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
@@ -873,7 +877,7 @@ function togglePlay() {{
         btnTogglePlay.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
         animFrameId = requestAnimationFrame(animationStep);
     }} else {{
-        btnTogglePlay.innerText = '▶️ 開始 60 FPS 絲滑動態演變';
+        btnTogglePlay.innerText = '▶️ 開始動態演變';
         btnTogglePlay.style.background = 'linear-gradient(135deg, #00e5ff 0%, #0284c7 100%)';
         if (animFrameId) cancelAnimationFrame(animFrameId);
     }}
@@ -888,7 +892,7 @@ function bindSync(slider, numInput, stateKey, isInt=false) {{
         renderDynamicTraces();
     }});
 
-    numInput.addEventListener('input', e => {{
+    const updateFromNum = e => {{
         const v = isInt ? parseInt(e.target.value) : parseFloat(e.target.value);
         if (!isNaN(v)) {{
             slider.value = v;
@@ -896,7 +900,9 @@ function bindSync(slider, numInput, stateKey, isInt=false) {{
             runSimulation();
             renderDynamicTraces();
         }}
-    }});
+    }};
+    numInput.addEventListener('input', updateFromNum);
+    numInput.addEventListener('change', updateFromNum);
 }}
 
 bindSync(sliderL, numL, 'l_val');
@@ -965,6 +971,38 @@ fg1.addEventListener('mousemove', e => {{
 }});
 
 fg1.addEventListener('mouseleave', () => {{
+    tooltip.style.display = 'none';
+}});
+
+// Tooltip on Chart 2
+fg2.addEventListener('mousemove', e => {{
+    const rect = fg2.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const plotW = width - margin.left - margin.right;
+    if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
+        const normX = (mouseX - margin.left) / plotW;
+        const lat = -90.0 + normX * 180.0;
+        const d = state.simData;
+        if (d) {{
+            let closestIdx = 0, minDiff = 999;
+            d.lats.forEach((l, idx) => {{
+                const diff = Math.abs(l - lat);
+                if (diff < minDiff) {{ minDiff = diff; closestIdx = idx; }}
+            }});
+
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY - 25) + 'px';
+            const latStr = d.lats[closestIdx] === 0 ? '赤道' : (d.lats[closestIdx] > 0 ? d.lats[closestIdx] + '°N' : Math.abs(d.lats[closestIdx]) + '°S');
+            const diffDead = d.temp[closestIdx] - d.tempNobio[closestIdx];
+            tooltip.innerHTML = `緯度: ${{latStr}}<br>調節溫度: ${{d.temp[closestIdx].toFixed(2)}}℃<br>死星基線: ${{d.tempNobio[closestIdx].toFixed(2)}}℃<br>調節溫差: ${{diffDead >= 0 ? '+' : ''}}${{diffDead.toFixed(2)}}℃`;
+            return;
+        }}
+    }}
+    tooltip.style.display = 'none';
+}});
+
+fg2.addEventListener('mouseleave', () => {{
     tooltip.style.display = 'none';
 }});
 

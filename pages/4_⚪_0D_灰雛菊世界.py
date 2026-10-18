@@ -11,7 +11,9 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart
+    render_plotly_chart,
+    render_sync_input,
+    set_param_value
 )
 from models.daisy_0d import (
     run_daisyworld_with_grey,
@@ -32,44 +34,61 @@ apply_custom_styles()
 render_hero(
     title="帶有灰雛菊因子的三物種雛菊世界 (Grey Daisyworld)",
     subtitle="引入反照率等於裸地的中性物種（灰雛菊），探討「無氣候調節貢獻的物種」在生態系中的競爭動態與自然選擇效應。",
-    badges=["Grey Daisy", "Neutral Albedo", "3-Species Competition", "Ecological Cheater Hypothesis", "60 FPS Canvas"]
+    badges=["Grey Daisy", "Neutral Albedo", "3-Species Competition", "Ecological Cheater Hypothesis", "動態演變畫布"]
 )
 
-# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
+# Unified Master Parameter Control Panel in Sidebar (Controls BOTH Plotly & Dynamic Canvas)
 with st.sidebar:
-    st.header("⚪ 0D 灰雛菊實驗室")
-    st.markdown("""
-    **實驗特色**
-    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
-    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
-    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
-    
-    ---
-    **核心生物物理機制**
-    - **灰雛菊 ($a_g$)**：反照率等於裸地 ($0.50$)，為「中性突變種/搭便車者 (Cheater)」，不對全球氣候提供主動保溫或降溫反饋。
-    - **土地競爭**：灰雛菊佔據空間 ($a_u = 1 - a_w - a_b - a_g$)，限制黑白雛菊擴張。
-    - **穩定性檢驗**：在適溫下灰雛菊能共存，但在偏離最適溫度的極端環境下，黑白雛菊依然憑藉微氣候優勢重新奪回主導權！
-    
-    ---
-    **參考基準**
-    - 灰雛菊反照率：$0.50$
-    - 最適生長溫度：$22.5$ ℃
-    - 死亡率：$0.30$
-    """)
+    st.header("⚙️ 灰雛菊實驗參數控制面板")
 
-# Default parameters
-s0 = 917.0
-l_val = 1.0
-alpha_w = 0.75
-alpha_b = 0.25
-alpha_g = 0.50
-alpha_u = 0.50
-q_val = 20.0
-gamma_val = 0.30
-aw_init = 0.01
-ab_init = 0.01
-ag_init = 0.01
-itera = 150
+    if "daisygrey0d_preset" not in st.session_state:
+        st.session_state["daisygrey0d_preset"] = "標準三物種共存 (L=1.0, ag=0.01)"
+
+    preset = st.selectbox(
+        "🎯 預設情境 (Scenario Presets)",
+        [
+            "自訂參數 (Custom)",
+            "標準三物種共存 (L=1.0, ag=0.01)",
+            "灰雛菊強勢入侵 (ag_init=0.10)",
+            "高光度三物種競爭 (L=1.20)",
+            "低光度黑灰競爭 (L=0.80)"
+        ],
+        index=1
+    )
+
+    if preset != st.session_state["daisygrey0d_preset"] and preset != "自訂參數 (Custom)":
+        st.session_state["daisygrey0d_preset"] = preset
+        if preset == "標準三物種共存 (L=1.0, ag=0.01)":
+            set_param_value("s0_dwg", 917.0)
+            set_param_value("l_val_dwg", 1.0)
+            set_param_value("ag_init_dwg", 0.01)
+        elif preset == "灰雛菊強勢入侵 (ag_init=0.10)":
+            set_param_value("s0_dwg", 917.0)
+            set_param_value("l_val_dwg", 1.0)
+            set_param_value("ag_init_dwg", 0.10)
+        elif preset == "高光度三物種競爭 (L=1.20)":
+            set_param_value("s0_dwg", 917.0)
+            set_param_value("l_val_dwg", 1.20)
+            set_param_value("ag_init_dwg", 0.01)
+        elif preset == "低光度黑灰競爭 (L=0.80)":
+            set_param_value("s0_dwg", 917.0)
+            set_param_value("l_val_dwg", 0.80)
+            set_param_value("ag_init_dwg", 0.01)
+
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dwg", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
+    l_val = render_sync_input("太陽光度因子 L", "l_val_dwg", 0.5, 1.8, 1.0, 0.02, format="%.2f")
+
+    with st.expander("🔬 反照率與初始覆蓋率 (滑桿 + 精確數值)", expanded=False):
+        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_dwg", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+        alpha_g = render_sync_input("灰雛菊反照率 α_g (中性物種)", "alpha_g_dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_dwg", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+        q_val = render_sync_input("微氣候係數 q (℃)", "q_val_dwg", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+        gamma_val = render_sync_input("死亡率 γ", "gamma_val_dwg", 0.05, 0.6, 0.3, 0.02, format="%.2f")
+        aw_init = render_sync_input("白雛菊初始值", "aw_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+        ab_init = render_sync_input("黑雛菊初始值", "ab_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+        ag_init = render_sync_input("灰雛菊初始值", "ag_init_dwg", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+        itera = render_sync_input("迭代步數", "itera_dwg", 50, 400, 150, 25, is_int=True)
 
 with st.expander("📐 點擊展開：灰雛菊模型原理與演化論批判"):
     st.markdown(r"""
@@ -103,19 +122,19 @@ with tab1:
 
     render_engine = st.radio(
         "圖表渲染模式",
-        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        ["⚡ 動態演變畫布", "📊 標準 Plotly 向量圖表"],
         horizontal=True,
         key="daisygrey0d_engine_choice"
     )
 
-    if "60 FPS" in render_engine:
+    if "動態演變" in render_engine:
         components.html(
             get_interactive_daisy_grey_0d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
                 q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera
             ),
-            height=820,
-            scrolling=False
+            height=890,
+            scrolling=True
         )
     else:
         last = df_grey.iloc[-1]

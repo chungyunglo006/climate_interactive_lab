@@ -11,7 +11,9 @@ from utils.ui import (
     render_hero,
     render_stat_card,
     get_plotly_layout,
-    render_plotly_chart
+    render_plotly_chart,
+    render_sync_input,
+    set_param_value
 )
 from models.daisy_0d import (
     run_daisyworld,
@@ -32,42 +34,55 @@ apply_custom_styles()
 render_hero(
     title="經典雙物種雛菊世界 (Classic Daisyworld)",
     subtitle="基於 Watson & Lovelock (1983) 蓋亞模型：黑雛菊吸熱升溫 vs 白雛菊散熱降溫的自發恆溫調節 (Homeostasis)。",
-    badges=["Daisyworld", "Gaia Hypothesis", "Temperature Regulation", "Biotic Feedback", "60 FPS Canvas"]
+    badges=["Daisyworld", "Gaia Hypothesis", "Temperature Regulation", "Biotic Feedback", "動態演變畫布"]
 )
 
-# Sidebar: Model Guide & Key Concepts (Unified single control panel is inside the interactive canvas)
+# Unified Master Parameter Control Panel in Sidebar (Controls BOTH Plotly & Dynamic Canvas)
 with st.sidebar:
-    st.header("🌼 0D 經典雛菊世界實驗室")
-    st.markdown("""
-    **實驗特色**
-    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸固化，曲線零重劃、零閃爍。
-    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
-    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
-    
-    ---
-    **核心生物物理機制**
-    - **黑雛菊 ($a_b$)**：低反照率 (0.25)，吸收更多陽光使周圍升溫，在寒冷環境下具競爭優勢。
-    - **白雛菊 ($a_w$)**：高反照率 (0.75)，反射陽光使周圍降溫，在炎熱環境下具競爭優勢。
-    - **恆溫機制 (Homeostasis)**：兩種雛菊自發消長，將行星整體均溫調節在最適生長點 ($22.5^\\circ\\text{C}$) 附近。
-    
-    ---
-    **參考基準**
-    - 最適生長溫度：$22.5$ ℃
-    - 生存極限範圍：$5.0 \\sim 40.0$ ℃
-    - 裸地反照率：$0.50$
-    """)
+    st.header("⚙️ 雛菊世界參數控制面板")
 
-# Default parameters
-s0 = 917.0
-l_val = 1.0
-alpha_w = 0.75
-alpha_b = 0.25
-alpha_u = 0.50
-q_val = 20.0
-gamma_val = 0.30
-aw_init = 0.01
-ab_init = 0.01
-itera = 150
+    if "daisy0d_preset" not in st.session_state:
+        st.session_state["daisy0d_preset"] = "標準經典設定 (L=1.0, S0=917)"
+
+    preset = st.selectbox(
+        "🎯 預設情境 (Scenario Presets)",
+        [
+            "自訂參數 (Custom)",
+            "標準經典設定 (L=1.0, S0=917)",
+            "低太陽光度冰冷期 (L=0.75 - 黑雛菊主導)",
+            "高太陽光度炎熱期 (L=1.25 - 白雛菊主導)",
+            "極端高光度生命崩潰 (L=1.55)"
+        ],
+        index=1
+    )
+
+    if preset != st.session_state["daisy0d_preset"] and preset != "自訂參數 (Custom)":
+        st.session_state["daisy0d_preset"] = preset
+        if preset == "標準經典設定 (L=1.0, S0=917)":
+            set_param_value("s0_dw", 917.0)
+            set_param_value("l_val_dw", 1.0)
+        elif preset == "低太陽光度冰冷期 (L=0.75 - 黑雛菊主導)":
+            set_param_value("s0_dw", 917.0)
+            set_param_value("l_val_dw", 0.75)
+        elif preset == "高太陽光度炎熱期 (L=1.25 - 白雛菊主導)":
+            set_param_value("s0_dw", 917.0)
+            set_param_value("l_val_dw", 1.25)
+        elif preset == "極端高光度生命崩潰 (L=1.55)":
+            set_param_value("s0_dw", 917.0)
+            set_param_value("l_val_dw", 1.55)
+
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dw", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
+    l_val = render_sync_input("太陽光度因子 L", "l_val_dw", 0.5, 1.8, 1.0, 0.02, format="%.2f")
+
+    with st.expander("🔬 生態與反照率參數 (滑桿 + 精確數值)", expanded=False):
+        alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
+        alpha_b = render_sync_input("黑雛菊反照率 α_b", "alpha_b_dw", 0.1, 0.4, 0.25, 0.02, format="%.2f")
+        alpha_u = render_sync_input("裸地反照率 α_u", "alpha_u_dw", 0.3, 0.7, 0.50, 0.02, format="%.2f")
+        q_val = render_sync_input("局地微氣候反饋 q (℃)", "q_val_dw", 5.0, 40.0, 20.0, 1.0, format="%.1f")
+        gamma_val = render_sync_input("雛菊死亡率 γ", "gamma_val_dw", 0.05, 0.6, 0.3, 0.02, format="%.2f")
+        aw_init = render_sync_input("白雛菊初始值", "aw_init_dw", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+        ab_init = render_sync_input("黑雛菊初始值", "ab_init_dw", 0.001, 0.3, 0.01, 0.005, format="%.3f")
+        itera = render_sync_input("迭代步數", "itera_dw", 50, 400, 150, 25, is_int=True)
 
 with st.expander("📐 點擊展開：經典雛菊世界數學原理與生物物理聯立方程"):
     st.markdown(r"""
@@ -103,19 +118,19 @@ with tab1:
 
     render_engine = st.radio(
         "圖表渲染模式",
-        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，曲線零重劃、零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        ["⚡ 動態演變畫布", "📊 標準 Plotly 向量圖表"],
         horizontal=True,
         key="daisy0d_engine_choice"
     )
 
-    if "60 FPS" in render_engine:
+    if "動態演變畫布" in render_engine:
         components.html(
             get_interactive_daisy0d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
                 q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera
             ),
-            height=820,
-            scrolling=False
+            height=890,
+            scrolling=True
         )
     else:
         last = df_dw.iloc[-1]

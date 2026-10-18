@@ -22,13 +22,14 @@ from models.ebm_0d import (
     find_three_equilibrium_states,
     calculate_ebm_bifurcation,
     run_ebm_transient_collapse,
+    run_ebm_continuous_transient_collapse,
     run_ebm_constant
 )
 
 
 @st.cache_data
 def get_cached_bifurcation(alpha_ice, alpha_land, t_ice, t_land, epsilon):
-    """Caches bifurcation curve to ensure ultra-smooth 60fps real-time dynamic animation."""
+    """Caches bifurcation curve to ensure ultra-smooth real-time dynamic animation."""
     return calculate_ebm_bifurcation(
         alpha_ice=alpha_ice, alpha_land=alpha_land,
         T_ice=t_ice, T_land=t_land, epsilon=epsilon,
@@ -47,40 +48,67 @@ apply_custom_styles()
 render_hero(
     title="零維能量平衡模型 (0D Energy Balance Model)",
     subtitle="探索全球平均溫度動態演化、冰雪反照率非線性反饋、三種平衡解以及氣候突變分歧點 (Bifurcation)。",
-    badges=["0D EBM", "Budyko-Sellers", "Ice-Albedo Feedback", "S-Curve", "Tipping Points"]
+    badges=["0D EBM", "Budyko-Sellers", "Ice-Albedo Feedback", "S-Curve", "Tipping Points", "動態演變畫布"]
 )
 
-# Sidebar: Model Guide & Key Concepts
+# Unified Master Parameter Control Panel in Sidebar (Controls BOTH Plotly & Dynamic Canvas)
 with st.sidebar:
-    st.header("🌍 0D 能量平衡實驗室")
-    st.markdown("""
-    **實驗特色**
-    - ⚡ **60 FPS 前端絲滑畫布**：坐標軸永久固化，曲線零重劃、零閃爍。
-    - 🎛️ **雙向同步面板**：滑桿平滑拖曳 + 精確數值鍵盤直接輸入。
-    - 🎬 **連續動態掃描**：內建 60 FPS 硬體加速平滑推移動畫。
-    
-    ---
-    **核心物理方程**
-    - 能量收支：$C \\frac{dT}{dt} = R_{in} - R_{out}$
-    - 吸收太陽能：$R_{in} = \\frac{S_0}{4}(1 - \\alpha(T))$
-    - 出射長波：$R_{out} = \\epsilon \\sigma T^4$
-    
-    ---
-    **狀態參考指標**
-    - 現代地球均溫：約 $15.0$ ℃ ($288.15$ K)
-    - 冰球臨界門檻：太陽輻射 $< 1288.6$ W/m²
-    """)
+    st.header("⚙️ 0D 物理參數控制面板")
 
-# Default parameters
-s0 = float(st.session_state.get("s0", 1368.0))
-t_init = float(st.session_state.get("t_init", 288.0))
-alpha_ice = float(st.session_state.get("alpha_ice", 0.60))
-alpha_land = float(st.session_state.get("alpha_land", 0.30))
-t_ice = float(st.session_state.get("t_ice", 263.0))
-t_land = float(st.session_state.get("t_land", 283.0))
-epsilon = float(st.session_state.get("epsilon", 0.62))
+    if "ebm0d_preset" not in st.session_state:
+        st.session_state["ebm0d_preset"] = "標準現代地球 (S0=1368, Tinit=288K)"
+
+    preset = st.selectbox(
+        "🎯 預設情境 (Scenario Presets)",
+        [
+            "自訂參數 (Custom)",
+            "標準現代地球 (S0=1368, Tinit=288K)",
+            "完全冰球地球 (S0=1200, Tinit=230K)",
+            "臨界崩潰前夕 (S0=1288.6, Tinit=280K)",
+            "極端酷熱地球 (S0=1600, Tinit=295K)"
+        ],
+        index=1
+    )
+
+    if preset != st.session_state["ebm0d_preset"] and preset != "自訂參數 (Custom)":
+        st.session_state["ebm0d_preset"] = preset
+        if preset == "標準現代地球 (S0=1368, Tinit=288K)":
+            set_param_value("s0", 1368.0)
+            set_param_value("t_init", 288.0)
+            set_param_value("epsilon", 0.62)
+            set_param_value("alpha_ice", 0.60)
+            set_param_value("alpha_land", 0.30)
+        elif preset == "完全冰球地球 (S0=1200, Tinit=230K)":
+            set_param_value("s0", 1200.0)
+            set_param_value("t_init", 230.0)
+            set_param_value("epsilon", 0.62)
+            set_param_value("alpha_ice", 0.60)
+            set_param_value("alpha_land", 0.30)
+        elif preset == "臨界崩潰前夕 (S0=1288.6, Tinit=280K)":
+            set_param_value("s0", 1288.6)
+            set_param_value("t_init", 280.0)
+            set_param_value("epsilon", 0.62)
+            set_param_value("alpha_ice", 0.60)
+            set_param_value("alpha_land", 0.30)
+        elif preset == "極端酷熱地球 (S0=1600, Tinit=295K)":
+            set_param_value("s0", 1600.0)
+            set_param_value("t_init", 295.0)
+            set_param_value("epsilon", 0.62)
+            set_param_value("alpha_ice", 0.60)
+            set_param_value("alpha_land", 0.30)
+
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0", 800.0, 2000.0, 1368.0, 10.0, format="%.1f")
+    t_init = render_sync_input("初始溫度 T_init (K)", "t_init", 200.0, 320.0, 288.0, 1.0, format="%.1f")
+
+    with st.expander("🔬 進階物性與反照率參數 (滑桿 + 精確數值)", expanded=False):
+        epsilon = render_sync_input("大氣長波有效發射率 ε", "epsilon", 0.40, 0.90, 0.62, 0.01, format="%.2f")
+        alpha_ice = render_sync_input("完全冰雪反照率 α_ice", "alpha_ice", 0.40, 0.85, 0.60, 0.02, format="%.2f")
+        alpha_land = render_sync_input("無冰陸地反照率 α_land", "alpha_land", 0.10, 0.50, 0.30, 0.02, format="%.2f")
+        t_ice = render_sync_input("結冰臨界溫度 T_ice (K)", "t_ice", 240.0, 275.0, 263.0, 1.0, format="%.1f")
+        t_land = render_sync_input("無冰臨界溫度 T_land (K)", "t_land", 270.0, 300.0, 283.0, 1.0, format="%.1f")
+        itera = render_sync_input("迭代步數 (Steps)", "itera_ebm0d", 50, 500, 200, 25, is_int=True)
+
 dt = 0.1
-itera = 200
 
 # Mathematical Principle Expander
 with st.expander("📐 點擊展開：模型數學原理與方程式"):
@@ -119,19 +147,19 @@ with tab1:
     
     render_engine = st.radio(
         "圖表渲染模式",
-        ["⚡ 60 FPS 絲滑高幀率畫布 (坐標軸固化，線段平滑變動，零閃爍)", "📊 標準 Plotly 向量圖表模式"],
+        ["⚡ 動態演變畫布", "📊 標準 Plotly 向量圖表"],
         horizontal=True,
         key="ebm0d_engine_choice"
     )
 
-    if "60 FPS" in render_engine:
+    if "動態演變畫布" in render_engine:
         components.html(
             get_interactive_ebm0d_html(
                 s0=s0, t_init=t_init, alpha_ice=alpha_ice, alpha_land=alpha_land,
                 t_ice=t_ice, t_land=t_land, epsilon=epsilon, dt=dt, itera=itera
             ),
-            height=760,
-            scrolling=False
+            height=890,
+            scrolling=True
         )
     else:
         df_sim = run_ebm(
@@ -209,8 +237,17 @@ with tab2:
     st.subheader("三種全球溫度平衡解 (Nonlinear Intersection Analysis)")
     st.markdown("由於冰雪反照率隨溫度增加而下降（正反饋），使得吸收太陽能曲線 $R_{in}(T)$ 呈現非線性 S 型，與長波輻射出射曲線 $R_{out}(T) = \\epsilon\\sigma T^4$ 產生**多個交點**。")
 
+    s0_eq_col1, s0_eq_col2 = st.columns([3, 1])
+    with s0_eq_col1:
+        s0_tab2 = st.slider(
+            "動態調整太陽常數 S₀ (W/m²) 觀察交點分歧與鞍節分岔",
+            800.0, 2000.0, float(s0), 5.0, key="s0_eq_slider"
+        )
+    with s0_eq_col2:
+        st.metric("分析太陽常數", f"{s0_tab2:.1f} W/m²")
+
     eq_states = find_three_equilibrium_states(
-        S0=s0, alpha_ice=alpha_ice, alpha_land=alpha_land,
+        S0=s0_tab2, alpha_ice=alpha_ice, alpha_land=alpha_land,
         T_ice=t_ice, T_land=t_land, epsilon=epsilon
     )
 
@@ -243,7 +280,7 @@ with tab2:
     fig_eq.add_trace(go.Scatter(
         x=t_curve, y=rin_curve,
         mode="lines", line=dict(color="#38bdf8", width=3),
-        name="吸收太陽輻射 $R_{in}(T) = \\frac{S_0}{4}(1-\\alpha(T))$"
+        name=f"吸收太陽輻射 $R_{{in}}(T) = \\frac{{{s0_tab2:.0f}}}{{4}}(1-\\alpha(T))$"
     ))
     fig_eq.add_trace(go.Scatter(
         x=t_curve, y=rout_curve,
@@ -328,46 +365,111 @@ with tab3:
 # Tab 4: Transient Collapse Simulation
 with tab4:
     st.subheader("太陽輻射遞減下的氣候瞬態崩潰動態模擬")
-    st.markdown("模擬太陽常數自 $1368$ W/m² 逐步衰減至 $1200$ W/m²。觀察溫暖起點與寒冷起點的氣候軌跡在穿過臨界點時的**突變斷崖**。")
+    st.markdown("模擬太陽常數衰減穿過臨界點時，系統在冰雪反照率正反饋作用下的**突變斷崖（Tipping Point Catastrophe）**。")
 
-    col_sim_btn, col_sim_info = st.columns([1, 3])
-    with col_sim_btn:
-        run_collapse = st.button("🚀 執行崩潰降溫模擬", type="primary")
+    sim_mode = st.radio(
+        "選擇模擬演化模式",
+        ["🌊 連續時間動態數值積分 (高解析度連續瞬降曲線)", "🔍 準靜態階梯分歧掃描 (可自訂細分階數)"],
+        horizontal=True
+    )
 
-    if run_collapse:
-        with st.spinner("模擬計算中..."):
-            collapse_data = run_ebm_transient_collapse(
-                S0_start=1368.0, S0_end=1200.0, S0_steps=20,
-                alpha_ice=alpha_ice, alpha_land=alpha_land,
-                T_ice=t_ice, T_land=t_land, epsilon=epsilon
-            )
+    if "連續時間動態" in sim_mode:
+        st.markdown("基於熱容量微分方程 $C \\frac{dT}{dt} = R_{in}(S_0(t)) - R_{out}(T)$ 進行連續高密度積分 ($dt = 0.05$ 年)，呈現極度平滑真實的動態崩潰與滯後相軌跡。")
+        c_p1, c_p2, c_p3 = st.columns(3)
+        with c_p1:
+            ramp_down_yr = st.slider("太陽常數平滑衰減年限 (年)", 20.0, 150.0, 60.0, 5.0)
+        with c_p2:
+            s0_min_c = st.slider("衰退終點太陽常數 S_min (W/m²)", 1050.0, 1280.0, 1160.0, 10.0)
+        with c_p3:
+            include_rewarming = st.checkbox("包含隨後太陽增溫解凍歷程 (遲滯迴線)", value=True)
 
-            s0_list = [d["S0"] for d in collapse_data]
-            tw_list = [d["T_warm_C"] for d in collapse_data]
-            tc_list = [d["T_cold_C"] for d in collapse_data]
+        if st.button("🚀 執行連續瞬降動態積分", type="primary", key="btn_run_continuous_collapse"):
+            with st.spinner("正在進行高精度連續微分積分 (1600+ 時間步)..."):
+                stay_yr = 20.0 if include_rewarming else 0.0
+                ramp_up_yr = 80.0 if include_rewarming else 0.0
+                df_dyn = run_ebm_continuous_transient_collapse(
+                    S0_start=s0, S0_min=s0_min_c, S0_max=1750.0,
+                    ramp_down_years=ramp_down_yr, stay_cold_years=stay_yr, ramp_up_years=ramp_up_yr,
+                    T_init=t_init, alpha_ice=alpha_ice, alpha_land=alpha_land,
+                    T_ice=t_ice, T_land=t_land, epsilon=epsilon, dt=0.05
+                )
 
-            fig_col = go.Figure()
-            fig_col.add_trace(go.Scatter(
-                x=s0_list, y=tw_list,
-                mode="lines+markers", marker=dict(size=7),
-                line=dict(color="#ef4444", width=3),
-                name="溫暖地表起始軌跡 (Warm-Start Branch)"
-            ))
-            fig_col.add_trace(go.Scatter(
-                x=s0_list, y=tc_list,
-                mode="lines+markers", marker=dict(size=7),
-                line=dict(color="#38bdf8", width=3, dash="dash"),
-                name="冰封地表起始軌跡 (Cold-Start Branch)"
-            ))
-            fig_col.add_vline(x=1288.6, line_dash="dot", line_color="#fbbf24", annotation_text="雪球地球臨界點 (Collapse Threshold)")
+                dcol1, dcol2 = st.columns(2)
+                with dcol1:
+                    fig_dyn_t = go.Figure()
+                    fig_dyn_t.add_trace(go.Scatter(
+                        x=df_dyn["時間 (年)"], y=df_dyn["溫度 (℃)"],
+                        mode="lines", line=dict(color="#00e5ff", width=3),
+                        name="地表溫度連續瞬降曲線 (℃)"
+                    ))
+                    fig_dyn_t.add_hline(y=t_ice - 273.15, line_dash="dash", line_color="#38bdf8", annotation_text=f"結冰臨界線 {t_ice-273.15:.1f}℃")
+                    fig_dyn_t.add_hline(y=t_land - 273.15, line_dash="dash", line_color="#4ade80", annotation_text=f"無冰臨界線 {t_land-273.15:.1f}℃")
+                    fig_dyn_t.update_layout(get_plotly_layout(
+                        "時間 vs 地表溫度瞬降軌跡 (Continuous Transient Drop)",
+                        "時間 (年)", "地表溫度 (℃)", height=480
+                    ))
+                    render_plotly_chart(fig_dyn_t, key="ebm0d_dyn_t_chart")
 
-            fig_col.update_layout(get_plotly_layout(
-                "太陽常數遞減時的氣候突變斷崖 (Transient Bifurcation Collapse)",
-                "太陽常數 $S_0$ (W/m²)", "地表溫度 (℃)", height=480
-            ))
-            render_plotly_chart(fig_col, key="ebm0d_col_chart")
+                with dcol2:
+                    fig_dyn_phase = go.Figure()
+                    fig_dyn_phase.add_trace(go.Scatter(
+                        x=df_dyn["太陽常數 (W/m²)"], y=df_dyn["溫度 (℃)"],
+                        mode="lines", line=dict(color="#f43f5e", width=3),
+                        name="相空間動態軌道"
+                    ))
+                    fig_dyn_phase.add_vline(x=1288.6, line_dash="dot", line_color="#fbbf24", annotation_text="靜態雪球臨界點 1288.6 W/m²")
+                    if include_rewarming:
+                        fig_dyn_phase.add_vline(x=1682.5, line_dash="dot", line_color="#c084fc", annotation_text="靜態解凍臨界點 1682.5 W/m²")
+                    fig_dyn_phase.update_layout(get_plotly_layout(
+                        "相空間動態遲滯軌道 (S₀ vs 溫度)",
+                        "太陽常數 S₀ (W/m²)", "地表溫度 (℃)", height=480
+                    ))
+                    render_plotly_chart(fig_dyn_phase, key="ebm0d_dyn_phase_chart")
 
-            st.success("✅ 觀察結果：當太陽常數降至約 1288 W/m² 以下時，溫暖起始軌跡無法再維持液態水，反照率劇增造成溫度斷崖式墜落至 -40℃ 以下，全球徹底冰封！")
+                st.success("✅ 連續數值積分完成：可清晰看見溫度隨時間平滑滑降，當日照低於臨界閾值時，反照率誘發失控反饋，形成如絲般順滑的突變瞬降大瀑布！")
+
+    else:
+        st.markdown("藉由逐步調整太陽常數並於每一步計算局部微熱平衡，可觀察準靜態分歧分支。")
+        s_c1, s_c2 = st.columns(2)
+        with s_c1:
+            s0_steps = st.slider("掃描細分步數 (Steps - 越高越絲滑)", 20, 200, 120, 10)
+        with s_c2:
+            s0_end_sweep = st.slider("掃描終點太陽常數 (W/m²)", 1000.0, 1280.0, 1200.0, 10.0)
+
+        if st.button("🚀 執行準靜態分歧降溫模擬", type="primary", key="btn_run_static_collapse"):
+            with st.spinner(f"正在計算 {s0_steps} 階高解析度分歧點..."):
+                collapse_data = run_ebm_transient_collapse(
+                    S0_start=s0, S0_end=s0_end_sweep, S0_steps=s0_steps,
+                    alpha_ice=alpha_ice, alpha_land=alpha_land,
+                    T_ice=t_ice, T_land=t_land, epsilon=epsilon
+                )
+
+                s0_list = [d["S0"] for d in collapse_data]
+                tw_list = [d["T_warm_C"] for d in collapse_data]
+                tc_list = [d["T_cold_C"] for d in collapse_data]
+
+                fig_col = go.Figure()
+                fig_col.add_trace(go.Scatter(
+                    x=s0_list, y=tw_list,
+                    mode="lines+markers", marker=dict(size=4),
+                    line=dict(color="#ef4444", width=3),
+                    name="溫暖地表起始軌跡 (Warm-Start Branch)"
+                ))
+                fig_col.add_trace(go.Scatter(
+                    x=s0_list, y=tc_list,
+                    mode="lines+markers", marker=dict(size=4),
+                    line=dict(color="#38bdf8", width=3, dash="dash"),
+                    name="冰封地表起始軌跡 (Cold-Start Branch)"
+                ))
+                fig_col.add_vline(x=1288.6, line_dash="dot", line_color="#fbbf24", annotation_text="雪球地球臨界點 (Collapse Threshold)")
+
+                fig_col.update_layout(get_plotly_layout(
+                    "高細分太陽常數遞減氣候突變斷崖",
+                    "太陽常數 $S_0$ (W/m²)", "地表溫度 (℃)", height=480
+                ))
+                render_plotly_chart(fig_col, key="ebm0d_col_chart")
+                st.success("✅ 高密度掃描完成：展示了密集細分下的臨界分岔斷崖！")
+
 
 # Simulation complete
 
