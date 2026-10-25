@@ -72,9 +72,21 @@ with st.sidebar:
             set_param_value("l_val_1dwg", 1.0)
             set_param_value("k_diff_1dwg", 1.5)
 
+    physics_mode_label = st.selectbox(
+        "🌐 物理大氣體系 (Atmosphere Framework)",
+        [
+            "🌍 現代地球溫室大氣 + 經向熱擴散 (K=3.87)",
+            "🌻 無大氣純黑體輻射 (K=0 孤立緯度)"
+        ],
+        index=0 if st.session_state.get("daisygrey1d_phys", "atmosphere") == "atmosphere" else 1,
+        key="daisygrey1d_phys_select"
+    )
+    physics_mode = "airless" if "無大氣" in physics_mode_label else "atmosphere"
+    st.session_state["daisygrey1d_phys"] = physics_mode
+
     s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dwg", 1200.0, 2800.0, 2100.0, 20.0, format="%.1f")
     l_val = render_sync_input("太陽光度因子 L", "l_val_1dwg", 0.5, 1.8, 1.0, 0.02, format="%.2f")
-    k_diff = render_sync_input("大氣熱輸送係數 K (W/m²/℃)", "k_diff_1dwg", 0.5, 10.0, 3.87, 0.1, format="%.2f")
+    k_diff = render_sync_input("大氣熱輸送係數 K (W/m²/℃)", "k_diff_1dwg", 0.0, 10.0, 0.0 if physics_mode == "airless" else 3.87, 0.1, format="%.2f")
 
     with st.expander("🔬 反照率與物性參數 (滑桿 + 精確數值)", expanded=False):
         alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dwg", 0.5, 0.9, 0.75, 0.02, format="%.2f")
@@ -99,7 +111,8 @@ with st.sidebar:
 # Run Simulation
 history_grey_1d, lats_grey_1d, temp_nobio_g = run_daisyworld_with_grey_1d(
     S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
-    q=q_val, gamma=gamma_val, ag_init=ag_init, K=k_diff, itera=itera
+    q=q_val, gamma=gamma_val, ag_init=ag_init, K=k_diff, itera=itera,
+    physics_mode=physics_mode
 )
 
 final_g = history_grey_1d[-1]
@@ -126,7 +139,8 @@ with tab1:
         components.html(
             get_interactive_daisy_grey_1d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
-                q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera
+                q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera,
+                physics_mode=physics_mode
             ),
             height=890,
             scrolling=True

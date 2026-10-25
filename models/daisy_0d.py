@@ -3,6 +3,7 @@
 Implements:
 - Watson & Lovelock (1983) Classic 2-species (Black & White) Daisyworld
 - 3-species Grey Daisyworld (neutral albedo competition)
+- Dual physics modes: "lovelock" (equivalent airless S0=917) & "stull" (Wisconsin 1-layer greenhouse S0=1368)
 - Solar luminosity / solar constant sweep for climate regulation (homeostasis) curves
 """
 
@@ -19,22 +20,38 @@ def beta_growth(T):
 
 
 def run_daisyworld(S0=917.0, L=1.0, alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
-                   q=20.0, gamma=0.3, aw_init=0.01, ab_init=0.01, dt=0.1, itera=150):
+                   q=20.0, gamma=0.3, aw_init=0.01, ab_init=0.01, dt=0.1, itera=150,
+                   physics_mode="lovelock"):
     """
     經典雙物種雛菊世界模擬器
+    physics_mode: "lovelock" (等效無大氣) 或 "stull" (單層溫室大氣)
     """
     sigma = 5.670374e-8
+    is_stull = (physics_mode == "stull")
     t_list, aw_list, ab_list, au_list, Tp_list, Tw_list, Tb_list, alpha_p_list = [], [], [], [], [], [], [], []
     aw, ab = float(aw_init), float(ab_init)
 
     for step in range(itera + 1):
         au = max(0.0, min(1.0, 1.0 - aw - ab))
         alpha_p = aw * alpha_w + ab * alpha_b + au * alpha_u
-        Tp_K = ((S0 * L * (1.0 - alpha_p)) / sigma) ** 0.25
-        Tp_C = Tp_K - 273.15
 
-        Tw = Tp_C + q * (alpha_p - alpha_w)
-        Tb = Tp_C + q * (alpha_p - alpha_b)
+        if not is_stull:
+            # Lovelock (1983) 等效無大氣
+            Tp_K = ((S0 * L * (1.0 - alpha_p)) / sigma) ** 0.25
+            Tp_C = Tp_K - 273.15
+            Tw = Tp_C + q * (alpha_p - alpha_w)
+            Tb = Tp_C + q * (alpha_p - alpha_b)
+        else:
+            # Wisconsin Stull (2000) 單層溫室效應 (Ts^4 = 2*Te^4)
+            q_flux = (S0 * L) / (4.0 * sigma)
+            Te4 = q_flux * (1.0 - alpha_p)
+            Ts4 = 2.0 * Te4
+            Tp_C = (Ts4 ** 0.25) - 273.15
+            Tr = 0.6  # 水平熱傳輸係數
+            Tw4 = max(1e5, (1.0 - Tr) * q_flux * (alpha_p - alpha_w) + Ts4)
+            Tb4 = max(1e5, (1.0 - Tr) * q_flux * (alpha_p - alpha_b) + Ts4)
+            Tw = (Tw4 ** 0.25) - 273.15
+            Tb = (Tb4 ** 0.25) - 273.15
 
         beta_w, beta_b = beta_growth(Tw), beta_growth(Tb)
 
@@ -58,7 +75,11 @@ def run_daisyworld(S0=917.0, L=1.0, alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
             ab *= scale
 
     # Baseline abiotic planet temperature for comparison
-    T_nobio_C = (((S0 * L * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+    if not is_stull:
+        T_nobio_C = (((S0 * L * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+    else:
+        q_dead = (S0 * L) / (4.0 * sigma)
+        T_nobio_C = ((2.0 * q_dead * (1.0 - alpha_u)) ** 0.25) - 273.15
 
     df = pd.DataFrame({
         "迭代步": range(itera + 1), "時間": t_list,
@@ -71,23 +92,39 @@ def run_daisyworld(S0=917.0, L=1.0, alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
 
 
 def run_daisyworld_with_grey(S0=917.0, L=1.0, alpha_w=0.75, alpha_b=0.25, alpha_g=0.50, alpha_u=0.5,
-                             q=20.0, gamma=0.3, aw_init=0.01, ab_init=0.01, ag_init=0.01, dt=0.1, itera=150):
+                             q=20.0, gamma=0.3, aw_init=0.01, ab_init=0.01, ag_init=0.01, dt=0.1, itera=150,
+                             physics_mode="lovelock"):
     """
     加入灰雛菊因子的三物種雛菊世界模擬器
+    physics_mode: "lovelock" (等效無大氣) 或 "stull" (單層溫室大氣)
     """
     sigma = 5.670374e-8
+    is_stull = (physics_mode == "stull")
     t_list, aw_list, ab_list, ag_list, au_list, Tp_list, Tw_list, Tb_list, Tg_list, alpha_p_list = [], [], [], [], [], [], [], [], [], []
     aw, ab, ag = float(aw_init), float(ab_init), float(ag_init)
 
     for step in range(itera + 1):
         au = max(0.0, min(1.0, 1.0 - aw - ab - ag))
         alpha_p = aw * alpha_w + ab * alpha_b + ag * alpha_g + au * alpha_u
-        Tp_K = ((S0 * L * (1.0 - alpha_p)) / sigma) ** 0.25
-        Tp_C = Tp_K - 273.15
 
-        Tw = Tp_C + q * (alpha_p - alpha_w)
-        Tb = Tp_C + q * (alpha_p - alpha_b)
-        Tg = Tp_C + q * (alpha_p - alpha_g)
+        if not is_stull:
+            Tp_K = ((S0 * L * (1.0 - alpha_p)) / sigma) ** 0.25
+            Tp_C = Tp_K - 273.15
+            Tw = Tp_C + q * (alpha_p - alpha_w)
+            Tb = Tp_C + q * (alpha_p - alpha_b)
+            Tg = Tp_C + q * (alpha_p - alpha_g)
+        else:
+            q_flux = (S0 * L) / (4.0 * sigma)
+            Te4 = q_flux * (1.0 - alpha_p)
+            Ts4 = 2.0 * Te4
+            Tp_C = (Ts4 ** 0.25) - 273.15
+            Tr = 0.6
+            Tw4 = max(1e5, (1.0 - Tr) * q_flux * (alpha_p - alpha_w) + Ts4)
+            Tb4 = max(1e5, (1.0 - Tr) * q_flux * (alpha_p - alpha_b) + Ts4)
+            Tg4 = max(1e5, (1.0 - Tr) * q_flux * (alpha_p - alpha_g) + Ts4)
+            Tw = (Tw4 ** 0.25) - 273.15
+            Tb = (Tb4 ** 0.25) - 273.15
+            Tg = (Tg4 ** 0.25) - 273.15
 
         beta_w, beta_b, beta_g = beta_growth(Tw), beta_growth(Tb), beta_growth(Tg)
 
@@ -116,7 +153,11 @@ def run_daisyworld_with_grey(S0=917.0, L=1.0, alpha_w=0.75, alpha_b=0.25, alpha_
             ab *= scale
             ag *= scale
 
-    T_nobio_C = (((S0 * L * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+    if not is_stull:
+        T_nobio_C = (((S0 * L * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+    else:
+        q_dead = (S0 * L) / (4.0 * sigma)
+        T_nobio_C = ((2.0 * q_dead * (1.0 - alpha_u)) ** 0.25) - 273.15
 
     df = pd.DataFrame({
         "迭代步": range(itera + 1), "時間": t_list,
@@ -130,12 +171,14 @@ def run_daisyworld_with_grey(S0=917.0, L=1.0, alpha_w=0.75, alpha_b=0.25, alpha_
 
 def sweep_daisyworld_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
                                 alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
-                                q=20.0, gamma=0.3, dt=0.1, itera_per_l=150):
+                                q=20.0, gamma=0.3, dt=0.1, itera_per_l=150,
+                                physics_mode="lovelock"):
     """
     Sweeps luminosity L to generate classic Daisyworld temperature regulation curve.
     Uses sequential continuation (each step initializes with previous equilibrium).
     """
     sigma = 5.670374e-8
+    is_stull = (physics_mode == "stull")
     l_vals = np.linspace(l_min, l_max, num_l)
 
     aw_eq, ab_eq, au_eq, tp_eq, t_nobio_eq = [], [], [], [], []
@@ -146,7 +189,7 @@ def sweep_daisyworld_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
     for l_val in l_vals:
         df, _ = run_daisyworld(S0=S0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
                                q=q, gamma=gamma, aw_init=curr_aw, ab_init=curr_ab,
-                               dt=dt, itera=itera_per_l)
+                               dt=dt, itera=itera_per_l, physics_mode=physics_mode)
         last_aw = df["白雛菊覆蓋率"].iloc[-1]
         last_ab = df["黑雛菊覆蓋率"].iloc[-1]
         last_au = df["裸地覆蓋率"].iloc[-1]
@@ -157,7 +200,11 @@ def sweep_daisyworld_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
         au_eq.append(last_au)
         tp_eq.append(last_tp)
 
-        t_dead = (((S0 * l_val * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+        if not is_stull:
+            t_dead = (((S0 * l_val * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+        else:
+            q_dead = (S0 * l_val) / (4.0 * sigma)
+            t_dead = ((2.0 * q_dead * (1.0 - alpha_u)) ** 0.25) - 273.15
         t_nobio_eq.append(t_dead)
 
         curr_aw = max(0.01, last_aw)
@@ -175,11 +222,13 @@ def sweep_daisyworld_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
 
 def sweep_daisyworld_grey_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
                                      alpha_w=0.75, alpha_b=0.25, alpha_g=0.50, alpha_u=0.5,
-                                     q=20.0, gamma=0.3, dt=0.1, itera_per_l=150):
+                                     q=20.0, gamma=0.3, dt=0.1, itera_per_l=150,
+                                     physics_mode="lovelock"):
     """
     Sweeps luminosity L for 3-species Grey Daisyworld.
     """
     sigma = 5.670374e-8
+    is_stull = (physics_mode == "stull")
     l_vals = np.linspace(l_min, l_max, num_l)
 
     aw_eq, ab_eq, ag_eq, au_eq, tp_eq, t_nobio_eq = [], [], [], [], [], []
@@ -190,7 +239,7 @@ def sweep_daisyworld_grey_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
         df, _ = run_daisyworld_with_grey(S0=S0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b,
                                          alpha_g=alpha_g, alpha_u=alpha_u, q=q, gamma=gamma,
                                          aw_init=curr_aw, ab_init=curr_ab, ag_init=curr_ag,
-                                         dt=dt, itera=itera_per_l)
+                                         dt=dt, itera=itera_per_l, physics_mode=physics_mode)
         last_aw = df["白雛菊覆蓋率"].iloc[-1]
         last_ab = df["黑雛菊覆蓋率"].iloc[-1]
         last_ag = df["灰雛菊覆蓋率"].iloc[-1]
@@ -203,7 +252,11 @@ def sweep_daisyworld_grey_luminosity(S0=917.0, l_min=0.6, l_max=1.6, num_l=60,
         au_eq.append(last_au)
         tp_eq.append(last_tp)
 
-        t_dead = (((S0 * l_val * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+        if not is_stull:
+            t_dead = (((S0 * l_val * (1.0 - alpha_u)) / sigma) ** 0.25) - 273.15
+        else:
+            q_dead = (S0 * l_val) / (4.0 * sigma)
+            t_dead = ((2.0 * q_dead * (1.0 - alpha_u)) ** 0.25) - 273.15
         t_nobio_eq.append(t_dead)
 
         curr_aw = max(0.01, last_aw)

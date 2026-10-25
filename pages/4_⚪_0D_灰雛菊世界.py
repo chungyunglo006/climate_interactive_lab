@@ -75,7 +75,24 @@ with st.sidebar:
             set_param_value("l_val_dwg", 0.80)
             set_param_value("ag_init_dwg", 0.01)
 
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dwg", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
+    physics_mode_label = st.selectbox(
+        "🌐 物理大氣體系 (Atmosphere Framework)",
+        [
+            "🌻 Lovelock (1983) 等效無大氣 (S₀=917)",
+            "🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)"
+        ],
+        index=0 if st.session_state.get("daisygrey0d_phys", "lovelock") == "lovelock" else 1,
+        key="daisygrey0d_phys_select"
+    )
+    physics_mode = "stull" if "Stull" in physics_mode_label else "lovelock"
+    if st.session_state.get("daisygrey0d_phys") != physics_mode:
+        st.session_state["daisygrey0d_phys"] = physics_mode
+        if physics_mode == "stull" and st.session_state.get("s0_dwg", 917.0) == 917.0:
+            set_param_value("s0_dwg", 1368.0)
+        elif physics_mode == "lovelock" and st.session_state.get("s0_dwg", 1368.0) == 1368.0:
+            set_param_value("s0_dwg", 917.0)
+
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dwg", 600.0, 1600.0, 1368.0 if physics_mode == "stull" else 917.0, 10.0, format="%.1f")
     l_val = render_sync_input("太陽光度因子 L", "l_val_dwg", 0.5, 1.8, 1.0, 0.02, format="%.2f")
 
     with st.expander("🔬 反照率與初始覆蓋率 (滑桿 + 精確數值)", expanded=False):
@@ -98,9 +115,12 @@ with st.expander("📐 點擊展開：灰雛菊模型原理與演化論批判"):
 
     在數學上：
     $$\alpha_p = a_w \alpha_w + a_b \alpha_b + a_g \alpha_g + a_u \alpha_u$$
-    由於灰雛菊的反照率等於裸地（$\alpha_g = \alpha_u = 0.50$）：
-    - 灰雛菊的局地溫度 $T_g = T_p + q(\alpha_p - \alpha_g)$ 完全取決於當時由黑白雛菊塑造的全球反照率 $\alpha_p$。
-    - 灰雛菊佔據了生存空間 $a_u = 1 - a_w - a_b - a_g$，與黑白雛菊競爭土地。
+    - **物理大氣體系**：
+      - **🌻 Lovelock (1983) 等效無大氣**：$T_p = \left( \frac{S_0 L (1 - \alpha_p)}{\sigma} \right)^{1/4} - 273.15$
+      - **🌍 Wisconsin Stull (2000) 單層溫室效應**：$q = \frac{S_0 L}{4\sigma}, \quad T_s^4 = 2 q (1 - \alpha_p), \quad T_p = (T_s^4)^{1/4} - 273.15$
+    - 局地微氣候方面，灰雛菊反照率 $\alpha_g \approx \alpha_u = 0.50$：
+      - Lovelock 模式：$T_g = T_p + q(\alpha_p - \alpha_g)$
+      - Stull 模式：$T_g^4 = \max(10^5, (1 - T_r) q (\alpha_p - \alpha_g) + T_s^4)$（其中水平傳輸 $T_r = 0.6$）
     - 模擬證明：即使加入中性灰雛菊，在黑白雛菊建立的最適溫度環境下，灰雛菊能共存，但在偏離最適溫度的極端氣候下，具備**主動微氣候保溫/散熱優勢**的黑白雛菊依然能在局部取得更高生長率！
     """)
 
@@ -113,7 +133,8 @@ tab1, tab2, tab3 = st.tabs([
 # Tab 1: Three-Species Dynamics
 df_grey, t_nobio = run_daisyworld_with_grey(
     S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
-    q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera
+    q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera,
+    physics_mode=physics_mode
 )
 
 # Tab 1: Three-Species Dynamics
@@ -131,7 +152,8 @@ with tab1:
         components.html(
             get_interactive_daisy_grey_0d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
-                q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera
+                q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera,
+                physics_mode=physics_mode
             ),
             height=890,
             scrolling=True
@@ -195,7 +217,7 @@ with tab2:
         df_l_grey = sweep_daisyworld_grey_luminosity(
             S0=s0, l_min=0.6, l_max=1.65, num_l=45,
             alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
-            q=q_val, gamma=gamma_val
+            q=q_val, gamma=gamma_val, physics_mode=physics_mode
         )
 
     l_fig = go.Figure()

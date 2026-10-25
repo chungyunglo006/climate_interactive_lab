@@ -9,9 +9,14 @@ Enhanced with Wisconsin AOS (UW-Madison / Roland Stull 2000) features:
 
 def get_interactive_daisy0d_html(
     s0=917.0, l_val=1.0, alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
-    q_val=20.0, gamma_val=0.3, aw_init=0.01, ab_init=0.01, dt=0.1, itera=150
+    q_val=20.0, gamma_val=0.3, aw_init=0.01, ab_init=0.01, dt=0.1, itera=150,
+    physics_mode="lovelock"
 ):
     """Generates self-contained hardware-accelerated interactive canvas HTML for 0D Daisyworld."""
+    opt_lovelock_sel = "selected" if physics_mode == "lovelock" else ""
+    opt_stull_sel = "selected" if physics_mode == "stull" else ""
+    badge_text = "🌻 Lovelock (1983)：S₀=917 W/m² (等效無大氣單一常數，光度 L=1.0 正處於黑白雛菊共生的恆溫平台)。" if physics_mode == "lovelock" else "🌍 Stull (2000)：S₀=1368 W/m² + 單層溫室效應 (T_s⁴ = 2T_e⁴) + 水平傳輸 Tr=0.6。在 L=1.0 下溫室增溫使黑白雛菊穩定共存繁盛！"
+    badge_border = "#00e5ff" if physics_mode == "lovelock" else "#22c55e"
     html_code = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -418,8 +423,8 @@ canvas {{
 
         <span style="color: #64748b; margin-left: 8px;">物理體系:</span>
         <select id="sel_physics_mode">
-            <option value="lovelock" selected>🌻 Lovelock (1983) 等效無大氣 (S₀=917)</option>
-            <option value="stull">🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)</option>
+            <option value="lovelock" {opt_lovelock_sel}>🌻 Lovelock (1983) 等效無大氣 (S₀=917)</option>
+            <option value="stull" {opt_stull_sel}>🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)</option>
         </select>
 
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
@@ -474,8 +479,8 @@ canvas {{
             <button class="btn btn-secondary" id="btn_clear_points" style="font-size: 0.8rem; padding: 5px 12px;">🧹 清除實驗紀錄</button>
             <span id="lbl_point_count" style="font-size: 0.78rem; color: #00e5ff; font-family: 'JetBrains Mono', monospace;">已記錄 0 個實測點</span>
         </div>
-        <div id="physics_mode_badge" style="font-size: 0.75rem; color: #64748b; background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 5px 8px; border-left: 3px solid #00e5ff; width: 100%;">
-            🌻 Lovelock (1983)：S₀=917 W/m² (等效無大氣單一常數，光度 L=1.0 正處於黑白雛菊共生的恆溫平台)。
+        <div id="physics_mode_badge" style="font-size: 0.75rem; color: #64748b; background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 5px 8px; border-left: 3px solid {badge_border}; width: 100%;">
+            {badge_text}
         </div>
     </div>
 </div>
@@ -552,7 +557,7 @@ let state = {{
     gamma_val: {gamma_val},
     aw_init: {aw_init},
     ab_init: {ab_init},
-    physicsMode: 'lovelock', // 'lovelock' or 'stull'
+    physicsMode: '{physics_mode}', // 'lovelock' or 'stull'
     isPlaying: false,
     pingPongDir: 1,
     simData: null,

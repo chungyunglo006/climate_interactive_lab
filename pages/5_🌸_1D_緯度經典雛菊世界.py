@@ -72,9 +72,21 @@ with st.sidebar:
             set_param_value("l_val_1dw", 1.0)
             set_param_value("k_diff_1dw", 1.5)
 
+    physics_mode_label = st.selectbox(
+        "🌐 物理大氣體系 (Atmosphere Framework)",
+        [
+            "🌍 現代地球溫室大氣 + 經向熱擴散 (K=3.87)",
+            "🌻 無大氣純黑體輻射 (K=0 孤立緯度)"
+        ],
+        index=0 if st.session_state.get("daisy1d_phys", "atmosphere") == "atmosphere" else 1,
+        key="daisy1d_phys_select"
+    )
+    physics_mode = "airless" if "無大氣" in physics_mode_label else "atmosphere"
+    st.session_state["daisy1d_phys"] = physics_mode
+
     s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_1dw", 1200.0, 2800.0, 2100.0, 20.0, format="%.1f")
     l_val = render_sync_input("太陽光度因子 L", "l_val_1dw", 0.5, 1.8, 1.0, 0.02, format="%.2f")
-    k_diff = render_sync_input("大氣熱輸送係數 K (W/m²/℃)", "k_diff_1dw", 0.5, 10.0, 3.87, 0.1, format="%.2f")
+    k_diff = render_sync_input("大氣熱輸送係數 K (W/m²/℃)", "k_diff_1dw", 0.0, 10.0, 0.0 if physics_mode == "airless" else 3.87, 0.1, format="%.2f")
 
     with st.expander("🔬 反照率與物性參數 (滑桿 + 精確數值)", expanded=False):
         alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_1dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
@@ -100,11 +112,12 @@ with st.expander("📐 點擊展開：1D 雛菊世界生態與氣候耦合數學
     在每個緯度帶 $j \in \{85^\circ, 75^\circ, \dots, 6^\circ\}$：
     1. **局部行星反照率**：
        $$\alpha_{p,j} = a_{w,j} \alpha_w + a_{b,j} \alpha_b + (1 - a_{w,j} - a_{b,j}) \alpha_u$$
-    2. **局部緯度大氣熱平衡**（包含經向熱擴散）：
-       $$R_{\text{in},j}(1 - \alpha_{p,j}) + K \bar{T} - A = (B + K) T_j$$
+    2. **局部緯度大氣熱平衡**：
+       - **🌍 有大氣模式**：$R_{\text{in},j}(1 - \alpha_{p,j}) + K \bar{T} - A = (B + K) T_j$（經向熱輸送 $K$ 平流緩和溫差）
+       - **🌻 無大氣模式**：$R_{\text{in},j}(1 - \alpha_{p,j}) = \sigma (T_{j,\text{K}})^4$（各緯度獨立純黑體輻射，無經向熱傳遞 $K=0$）
     3. **局部物種微氣候溫度**：
        $$T_{w,j} = T_j + q(\alpha_{p,j} - \alpha_w), \quad T_{b,j} = T_j + q(\alpha_{p,j} - \alpha_b)$$
-    4. **空間動態**：各緯度獨立進行生物族群消長，並透過大氣擴散項 $K(T_j - \bar{T})$ 與全體緯度產生全局熱交互作用。
+    4. **空間動態**：各緯度獨立進行生物族群消長。
     """)
 
 tab1, tab2, tab3, tab4 = st.tabs([
@@ -117,7 +130,8 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # Run 1D Daisyworld Simulation
 history_1d, lats_1d, temp_nobio = run_daisyworld_1d(
     S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
-    q=q_val, gamma=gamma_val, A=a_param, B=b_param, K=k_diff, itera=itera
+    q=q_val, gamma=gamma_val, A=a_param, B=b_param, K=k_diff, itera=itera,
+    physics_mode=physics_mode
 )
 
 final_step = history_1d[-1]
@@ -137,7 +151,8 @@ with tab1:
         components.html(
             get_interactive_daisy1d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
-                q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera
+                q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera,
+                physics_mode=physics_mode
             ),
             height=890,
             scrolling=True

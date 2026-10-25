@@ -7,9 +7,14 @@ Includes synchronized sliders + direct numeric keyboard inputs and scenario pres
 
 def get_interactive_daisy_grey_0d_html(
     s0=917.0, l_val=1.0, alpha_w=0.75, alpha_b=0.25, alpha_g=0.50, alpha_u=0.5,
-    q_val=20.0, gamma_val=0.3, aw_init=0.01, ab_init=0.01, ag_init=0.01, dt=0.1, itera=150
+    q_val=20.0, gamma_val=0.3, aw_init=0.01, ab_init=0.01, ag_init=0.01, dt=0.1, itera=150,
+    physics_mode="lovelock"
 ):
     """Generates self-contained 60 FPS hardware-accelerated interactive canvas HTML for 0D Grey Daisyworld."""
+    opt_lovelock_sel = "selected" if physics_mode == "lovelock" else ""
+    opt_stull_sel = "selected" if physics_mode == "stull" else ""
+    badge_text = "🌻 Lovelock (1983)：S₀=917 W/m² (等效無大氣單一常數，光度 L=1.0 正處於三物種共存恆溫區)。" if physics_mode == "lovelock" else "🌍 Stull (2000)：S₀=1368 W/m² + 單層溫室效應 (T_s⁴ = 2T_e⁴) + 水平傳輸 Tr=0.6。在現代地球溫室下觀察灰雛菊競爭！"
+    badge_border = "#00e5ff" if physics_mode == "lovelock" else "#22c55e"
     html_code = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -363,6 +368,12 @@ canvas {{
         <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設標準光度</button>
 
+        <span style="color: #64748b; margin-left: 8px;">物理體系:</span>
+        <select id="sel_physics_mode">
+            <option value="lovelock" {opt_lovelock_sel}>🌻 Lovelock (1983) 等效無大氣 (S₀=917)</option>
+            <option value="stull" {opt_stull_sel}>🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)</option>
+        </select>
+
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
         <select id="sel_anim_target">
             <option value="l_val">太陽光度 L</option>
@@ -380,6 +391,10 @@ canvas {{
 
         <span style="color: #64748b;">速率 (Δ/幀):</span>
         <input type="number" class="inline-input" id="num_anim_speed" value="0.003" step="0.001" min="0.0005" max="0.03" style="width: 85px;">
+    </div>
+
+    <div id="physics_mode_badge" style="font-size: 0.75rem; color: #64748b; background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 6px 10px; border-left: 3px solid {badge_border}; margin-top: 12px; width: 100%;">
+        {badge_text}
     </div>
 </div>
 
@@ -458,12 +473,15 @@ let state = {{
     aw_init: {aw_init},
     ab_init: {ab_init},
     ag_init: {ag_init},
+    physicsMode: '{physics_mode}',
     isPlaying: false,
     pingPongDir: 1,
     simData: null
 }};
 
 // DOM Elements
+const selPhysicsMode = document.getElementById('sel_physics_mode');
+const physicsModeBadge = document.getElementById('physics_mode_badge');
 const sliderL = document.getElementById('slider_l');
 const numL = document.getElementById('num_l');
 const sliderAg = document.getElementById('slider_ag');
@@ -539,15 +557,32 @@ function runSimulation() {{
     let ab = state.ab_init;
     let ag = state.ag_init;
 
+    const isStull = state.physicsMode === 'stull';
+
     for (let step = 0; step <= ITERA; step++) {{
         const au = Math.max(0.0, Math.min(1.0, 1.0 - aw - ab - ag));
         const alphaP = aw * state.alpha_w + ab * state.alpha_b + ag * state.alpha_g + au * state.alpha_u;
-        const TpK = Math.pow((state.s0 * state.l_val * (1.0 - alphaP)) / SIGMA, 0.25);
-        const TpC = TpK - 273.15;
 
-        const Tw = TpC + state.q_val * (alphaP - state.alpha_w);
-        const Tb = TpC + state.q_val * (alphaP - state.alpha_b);
-        const Tg = TpC + state.q_val * (alphaP - state.alpha_g);
+        let TpC, Tw, Tb, Tg;
+        if (!isStull) {{
+            const TpK = Math.pow((state.s0 * state.l_val * (1.0 - alphaP)) / SIGMA, 0.25);
+            TpC = TpK - 273.15;
+            Tw = TpC + state.q_val * (alphaP - state.alpha_w);
+            Tb = TpC + state.q_val * (alphaP - state.alpha_b);
+            Tg = TpC + state.q_val * (alphaP - state.alpha_g);
+        }} else {{
+            const q = (state.s0 * state.l_val) / (4.0 * SIGMA);
+            const Te4 = q * (1.0 - alphaP);
+            const Ts4 = 2.0 * Te4;
+            TpC = Math.pow(Ts4, 0.25) - 273.15;
+            const Tr = 0.6;
+            const Tw4 = Math.max(1e5, (1.0 - Tr) * q * (alphaP - state.alpha_w) + Ts4);
+            const Tb4 = Math.max(1e5, (1.0 - Tr) * q * (alphaP - state.alpha_b) + Ts4);
+            const Tg4 = Math.max(1e5, (1.0 - Tr) * q * (alphaP - state.alpha_g) + Ts4);
+            Tw = Math.pow(Tw4, 0.25) - 273.15;
+            Tb = Math.pow(Tb4, 0.25) - 273.15;
+            Tg = Math.pow(Tg4, 0.25) - 273.15;
+        }}
 
         const betaW = betaGrowth(Tw);
         const betaB = betaGrowth(Tb);
@@ -576,7 +611,13 @@ function runSimulation() {{
         }}
     }}
 
-    const Tnobio = Math.pow((state.s0 * state.l_val * (1.0 - state.alpha_u)) / SIGMA, 0.25) - 273.15;
+    let Tnobio;
+    if (!isStull) {{
+        Tnobio = Math.pow((state.s0 * state.l_val * (1.0 - state.alpha_u)) / SIGMA, 0.25) - 273.15;
+    }} else {{
+        const qDead = (state.s0 * state.l_val) / (4.0 * SIGMA);
+        Tnobio = Math.pow(2.0 * qDead * (1.0 - state.alpha_u), 0.25) - 273.15;
+    }}
 
     state.simData = {{
         t, aw: awList, ab: abList, ag: agList, au: auList,
@@ -927,6 +968,28 @@ bindSync(sliderGamma, numGamma, 'gamma_val');
 bindSync(sliderQ, numQ, 'q_val');
 
 btnTogglePlay.addEventListener('click', togglePlay);
+
+// Physics Framework Switch
+if (selPhysicsMode) {{
+    selPhysicsMode.addEventListener('change', e => {{
+        state.physicsMode = e.target.value;
+        if (state.physicsMode === 'stull') {{
+            state.s0 = 1368.0;
+            if (physicsModeBadge) {{
+                physicsModeBadge.innerHTML = '🌍 Stull (2000)：S₀=1368 W/m² + 單層溫室效應 (T_s⁴ = 2T_e⁴) + 水平傳輸 Tr=0.6。在現代地球溫室下觀察灰雛菊競爭！';
+                physicsModeBadge.style.borderLeftColor = '#22c55e';
+            }}
+        }} else {{
+            state.s0 = 917.0;
+            if (physicsModeBadge) {{
+                physicsModeBadge.innerHTML = '🌻 Lovelock (1983)：S₀=917 W/m² (等效無大氣單一常數，光度 L=1.0 正處於三物種共存恆溫區)。';
+                physicsModeBadge.style.borderLeftColor = '#00e5ff';
+            }}
+        }}
+        runSimulation();
+        renderDynamicTraces();
+    }});
+}}
 
 // Scenario Presets
 selPreset.addEventListener('change', e => {{

@@ -71,7 +71,24 @@ with st.sidebar:
             set_param_value("s0_dw", 917.0)
             set_param_value("l_val_dw", 1.55)
 
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dw", 700.0, 1300.0, 917.0, 10.0, format="%.1f")
+    physics_mode_label = st.selectbox(
+        "🌐 物理大氣體系 (Atmosphere Framework)",
+        [
+            "🌻 Lovelock (1983) 等效無大氣 (S₀=917)",
+            "🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)"
+        ],
+        index=0 if st.session_state.get("daisy0d_phys", "lovelock") == "lovelock" else 1,
+        key="daisy0d_phys_select"
+    )
+    physics_mode = "stull" if "Stull" in physics_mode_label else "lovelock"
+    if st.session_state.get("daisy0d_phys") != physics_mode:
+        st.session_state["daisy0d_phys"] = physics_mode
+        if physics_mode == "stull" and st.session_state.get("s0_dw", 917.0) == 917.0:
+            set_param_value("s0_dw", 1368.0)
+        elif physics_mode == "lovelock" and st.session_state.get("s0_dw", 1368.0) == 1368.0:
+            set_param_value("s0_dw", 917.0)
+
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dw", 600.0, 1600.0, 1368.0 if physics_mode == "stull" else 917.0, 10.0, format="%.1f")
     l_val = render_sync_input("太陽光度因子 L", "l_val_dw", 0.5, 1.8, 1.0, 0.02, format="%.2f")
 
     with st.expander("🔬 生態與反照率參數 (滑桿 + 精確數值)", expanded=False):
@@ -89,10 +106,12 @@ with st.expander("📐 點擊展開：經典雛菊世界數學原理與生物物
     ### 數學公式說明
     - **行星反照率**：由白雛菊覆蓋率 $a_w$、黑雛菊覆蓋率 $a_b$ 與裸地 $a_u = 1 - a_w - a_b$ 線性疊加：
       $$\alpha_p = a_w \alpha_w + a_b \alpha_b + a_u \alpha_u$$
-    - **行星有效溫度**：
-      $$T_p = \left( \frac{S_0 L (1 - \alpha_p)}{\sigma} \right)^{1/4} - 273.15$$
+    - **物理大氣體系**：
+      - **🌻 Lovelock (1983) 等效無大氣**：$T_p = \left( \frac{S_0 L (1 - \alpha_p)}{\sigma} \right)^{1/4} - 273.15$
+      - **🌍 Wisconsin Stull (2000) 單層溫室效應**：$q = \frac{S_0 L}{4\sigma}, \quad T_s^4 = 2 q (1 - \alpha_p), \quad T_p = (T_s^4)^{1/4} - 273.15$
     - **局地微氣候溫度**（局地反照率差異吸收能量，使黑雛菊周邊更熱、白雛菊周邊更冷）：
-      $$T_w = T_p + q(\alpha_p - \alpha_w), \quad T_b = T_p + q(\alpha_p - \alpha_b)$$
+      - Lovelock 模式：$T_w = T_p + q(\alpha_p - \alpha_w), \quad T_b = T_p + q(\alpha_p - \alpha_b)$
+      - Stull 模式：$T_w^4 = \max(10^5, (1 - T_r) q (\alpha_p - \alpha_w) + T_s^4), \quad T_b^4 = \max(10^5, (1 - T_r) q (\alpha_p - \alpha_b) + T_s^4)$（其中水平傳輸 $T_r = 0.6$）
     - **溫度生長函數**（最適溫度為 $22.5^\circ\text{C}$）：
       $$\beta(T) = \max\left(0, 1 - 0.003265(22.5 - T)^2\right)$$
     - **族群消長方程式**：
@@ -109,7 +128,8 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # Tab 1: Time Dynamics
 df_dw, t_nobio = run_daisyworld(
     S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
-    q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera
+    q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera,
+    physics_mode=physics_mode
 )
 
 # Tab 1: Time Dynamics
@@ -127,7 +147,8 @@ with tab1:
         components.html(
             get_interactive_daisy0d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
-                q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera
+                q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera,
+                physics_mode=physics_mode
             ),
             height=890,
             scrolling=True
@@ -182,7 +203,7 @@ with tab2:
         df_l = sweep_daisyworld_luminosity(
             S0=s0, l_min=0.6, l_max=1.65, num_l=50,
             alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
-            q=q_val, gamma=gamma_val
+            q=q_val, gamma=gamma_val, physics_mode=physics_mode
         )
 
     l_col1, l_col2 = st.columns(2)

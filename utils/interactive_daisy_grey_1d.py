@@ -7,9 +7,14 @@ Includes synchronized sliders + direct numeric keyboard inputs and scenario pres
 
 def get_interactive_daisy_grey_1d_html(
     s0=2100.0, l_val=1.0, alpha_w=0.75, alpha_b=0.25, alpha_g=0.50, alpha_u=0.5,
-    q_val=20.0, gamma_val=0.3, k_diff=3.87, a_param=230.0, b_param=2.17, itera=150
+    q_val=20.0, gamma_val=0.3, k_diff=3.87, a_param=230.0, b_param=2.17, itera=150,
+    physics_mode="atmosphere"
 ):
     """Generates self-contained 60 FPS hardware-accelerated interactive canvas HTML for 1D Grey Daisyworld."""
+    opt_atmo_sel = "selected" if physics_mode == "atmosphere" else ""
+    opt_airless_sel = "selected" if physics_mode == "airless" else ""
+    badge_text = "🌍 地球溫室大氣模式：包含長波溫室效應與經向大氣熱輸送 (K)，三物種在全球與緯度生態位競爭。" if physics_mode == "atmosphere" else "🌻 無大氣模式 (如月球)：無大氣熱輸送 (K=0) 且無溫室效應，各緯度獨立進行純黑體輻射平衡，赤道酷熱、兩極極寒！"
+    badge_border = "#22c55e" if physics_mode == "atmosphere" else "#00e5ff"
     html_code = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -363,6 +368,12 @@ canvas {{
         <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設標準光度</button>
 
+        <span style="color: #64748b; margin-left: 8px;">物理狀態:</span>
+        <select id="sel_physics_mode">
+            <option value="atmosphere" {opt_atmo_sel}>🌍 溫室大氣 + 經向熱擴散 (K=3.87)</option>
+            <option value="airless" {opt_airless_sel}>🌻 無大氣純黑體輻射 (K=0 孤立緯度)</option>
+        </select>
+
         <span style="color: #64748b; margin-left: 8px;">視角範圍:</span>
         <select id="sel_view_domain">
             <option value="global" selected>🌐 全球對稱 (85°S ~ 85°N)</option>
@@ -386,6 +397,10 @@ canvas {{
 
         <span style="color: #64748b;">速率 (Δ/幀):</span>
         <input type="number" class="inline-input" id="num_anim_speed" value="0.002" step="0.001" min="0.0005" max="0.03" style="width: 85px;">
+    </div>
+
+    <div id="physics_mode_badge" style="font-size: 0.75rem; color: #64748b; background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 6px 10px; border-left: 3px solid {badge_border}; margin-top: 12px; width: 100%;">
+        {badge_text}
     </div>
 </div>
 
@@ -475,6 +490,7 @@ let state = {{
     a_param: {a_param},
     b_param: {b_param},
     itera: {itera},
+    physicsMode: '{physics_mode}',
     viewDomain: 'global',
     isPlaying: false,
     pingPongDir: 1,
@@ -482,6 +498,8 @@ let state = {{
 }};
 
 // DOM Elements
+const selPhysicsMode = document.getElementById('sel_physics_mode');
+const physicsModeBadge = document.getElementById('physics_mode_badge');
 const selViewDomain = document.getElementById('sel_view_domain');
 const sliderL = document.getElementById('slider_l');
 const numL = document.getElementById('num_l');
@@ -562,10 +580,19 @@ function runSimulation() {{
             alphaP.push(aw[i] * state.alpha_w + ab[i] * state.alpha_b + ag[i] * state.alpha_g + u * state.alpha_u);
         }}
 
-        for (let iter = 0; iter < 15; iter++) {{
-            const meanT = temp.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
+        // Temperature Calculation: Atmosphere vs Airless
+        const isAirless = state.physicsMode === 'airless';
+        if (!isAirless) {{
+            for (let iter = 0; iter < 15; iter++) {{
+                const meanT = temp.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
+                for (let i = 0; i < nLat; i++) {{
+                    temp[i] = (Rin[i] * (1.0 - alphaP[i]) + state.k_diff * meanT - state.a_param) / (state.b_param + state.k_diff);
+                }}
+            }}
+        }} else {{
             for (let i = 0; i < nLat; i++) {{
-                temp[i] = (Rin[i] * (1.0 - alphaP[i]) + state.k_diff * meanT - state.a_param) / (state.b_param + state.k_diff);
+                const absorbed = Math.max(1.0, Rin[i] * (1.0 - alphaP[i]));
+                temp[i] = Math.pow(absorbed / 5.670374e-8, 0.25) - 273.15;
             }}
         }}
 
@@ -594,10 +621,18 @@ function runSimulation() {{
     }}
 
     let tempNobio = new Array(nLat).fill(15.0);
-    for (let iter = 0; iter < 20; iter++) {{
-        const meanDead = tempNobio.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
+    const isAirlessDead = state.physicsMode === 'airless';
+    if (!isAirlessDead) {{
+        for (let iter = 0; iter < 20; iter++) {{
+            const meanDead = tempNobio.reduce((acc, t, i) => acc + t * latCos[i], 0) / sumCos;
+            for (let i = 0; i < nLat; i++) {{
+                tempNobio[i] = (Rin[i] * (1.0 - state.alpha_u) + state.k_diff * meanDead - state.a_param) / (state.b_param + state.k_diff);
+            }}
+        }}
+    }} else {{
         for (let i = 0; i < nLat; i++) {{
-            tempNobio[i] = (Rin[i] * (1.0 - state.alpha_u) + state.k_diff * meanDead - state.a_param) / (state.b_param + state.k_diff);
+            const absorbedDead = Math.max(1.0, Rin[i] * (1.0 - state.alpha_u));
+            tempNobio[i] = Math.pow(absorbedDead / 5.670374e-8, 0.25) - 273.15;
         }}
     }}
 
@@ -970,6 +1005,26 @@ selViewDomain.addEventListener('change', e => {{
     drawStaticBackgrounds();
     renderDynamicTraces();
 }});
+
+// Physics Mode Switch
+if (selPhysicsMode) {{
+    selPhysicsMode.addEventListener('change', e => {{
+        state.physicsMode = e.target.value;
+        if (state.physicsMode === 'atmosphere') {{
+            if (physicsModeBadge) {{
+                physicsModeBadge.innerHTML = '🌍 地球溫室大氣模式：包含長波溫室效應與經向大氣熱輸送 (K)，三物種在全球與緯度生態位競爭。';
+                physicsModeBadge.style.borderLeftColor = '#22c55e';
+            }}
+        }} else {{
+            if (physicsModeBadge) {{
+                physicsModeBadge.innerHTML = '🌻 無大氣模式 (如月球)：無大氣熱輸送 (K=0) 且無溫室效應，各緯度獨立進行純黑體輻射平衡，赤道酷熱、兩極極寒！';
+                physicsModeBadge.style.borderLeftColor = '#00e5ff';
+            }}
+        }}
+        runSimulation();
+        renderDynamicTraces();
+    }});
+}}
 
 // Scenario Presets
 selPreset.addEventListener('change', e => {{
