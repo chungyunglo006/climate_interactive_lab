@@ -1219,8 +1219,8 @@ function drawStaticBackgrounds() {{
     ctxBg1.textBaseline = 'top';
 
     if (isCurves) {{
-        const lMin = 0.6, lMax = 1.6;
-        const lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6];
+        const lMin = 0.5, lMax = 1.8;
+        const lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8];
         lTicks.forEach(lv => {{
             const x = margin.left + plotW * ((lv - lMin) / (lMax - lMin));
             ctxBg1.beginPath();
@@ -1304,8 +1304,8 @@ function drawStaticBackgrounds() {{
     ctxBg2.textBaseline = 'top';
 
     if (isCurves) {{
-        const lMin = 0.6, lMax = 1.6;
-        const lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6];
+        const lMin = 0.5, lMax = 1.8;
+        const lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8];
         lTicks.forEach(lv => {{
             const x = margin.left + plotW * ((lv - lMin) / (lMax - lMin));
             ctxBg2.beginPath();
@@ -1356,7 +1356,7 @@ function renderDynamicTraces() {{
     const isCurves = state.chartView === 'curves';
 
     if (isCurves) {{
-        const lMin = 0.6, lMax = 1.6;
+        const lMin = 0.5, lMax = 1.8;
         const pts = state.recordedPoints;
 
         // --- Chart 1: Equilibrium Coverage vs L ---
@@ -1981,7 +1981,7 @@ fg1.addEventListener('mousemove', e => {{
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         if (state.chartView === 'curves') {{
-            const lMin = 0.6, lMax = 1.6;
+            const lMin = 0.5, lMax = 1.8;
             const targetL = lMin + ((mouseX - margin.left) / plotW) * (lMax - lMin);
             // Find closest recorded point
             let closest = null, minDist = 0.08;
@@ -2023,7 +2023,7 @@ fg2.addEventListener('mousemove', e => {{
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         if (state.chartView === 'curves') {{
-            const lMin = 0.6, lMax = 1.6;
+            const lMin = 0.5, lMax = 1.8;
             const targetL = lMin + ((mouseX - margin.left) / plotW) * (lMax - lMin);
             let closest = null, minDist = 0.08;
             state.recordedPoints.forEach(p => {{
