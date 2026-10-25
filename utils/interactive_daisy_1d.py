@@ -1107,6 +1107,8 @@ function setParams(cfg) {{
 
 // Export High-Res PNG Snapshot
 function exportSnapshotPng() {{
+    if (!state.simData) runSimulation();
+
     const dpr = window.devicePixelRatio || 1;
     const pad = 24;
     const headerH = 65;
@@ -1131,7 +1133,7 @@ function exportSnapshotPng() {{
 
     ctx.font = '12px "JetBrains Mono", monospace';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`光度 L: ${{state.l_val.toFixed(2)}} | 調控全球均溫: ${{state.simData.meanTp.toFixed(2)}}℃ | 死星均溫: ${{state.simData.meanTdead.toFixed(2)}}℃ | K: ${{state.k.toFixed(1)}}`, pad, pad + 40);
+    ctx.fillText(`光度 L: ${{state.l_val.toFixed(2)}} | 調控全球均溫: ${{state.simData.meanTp.toFixed(2)}}℃ | 死星均溫: ${{state.simData.meanTdead.toFixed(2)}}℃ | K: ${{state.k_diff.toFixed(1)}}`, pad, pad + 40);
 
     ctx.drawImage(bg1, pad, pad + headerH, width, height);
     ctx.drawImage(fg1, pad, pad + headerH, width, height);
@@ -1162,7 +1164,7 @@ function initRecordCanvas() {{
 }}
 
 function updateRecordFrame() {{
-    if (!isRecording || !recordCtx) return;
+    if (!isRecording || !recordCtx || !state.simData) return;
     recordCtx.fillStyle = '#0b1120';
     recordCtx.fillRect(0, 0, 1200, 680);
 
@@ -1171,7 +1173,7 @@ function updateRecordFrame() {{
     recordCtx.fillText('1D Latitude Daisyworld Simulation Lab', 25, 35);
     recordCtx.fillStyle = '#94a3b8';
     recordCtx.font = '13px "JetBrains Mono", monospace';
-    recordCtx.fillText(`L=${{state.l_val.toFixed(2)}} | MeanTp=${{state.simData.meanTp.toFixed(2)}}℃ | DeadTp=${{state.simData.meanTdead.toFixed(2)}}℃ | K=${{state.k.toFixed(1)}}`, 25, 60);
+    recordCtx.fillText(`L=${{state.l_val.toFixed(2)}} | MeanTp=${{state.simData.meanTp.toFixed(2)}}℃ | DeadTp=${{state.simData.meanTdead.toFixed(2)}}℃ | K=${{state.k_diff.toFixed(1)}}`, 25, 60);
 
     recordCtx.drawImage(bg1, 20, 80, 560, 560);
     recordCtx.drawImage(fg1, 20, 80, 560, 560);

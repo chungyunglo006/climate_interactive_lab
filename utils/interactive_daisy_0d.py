@@ -1779,6 +1779,8 @@ selPhysicsMode.addEventListener('change', e => {{
 
 // Export High-Res PNG Snapshot
 function exportSnapshotPng() {{
+    if (!state.simData) runSimulation();
+
     const dpr = window.devicePixelRatio || 1;
     const pad = 24;
     const headerH = 65;
@@ -1834,7 +1836,7 @@ function initRecordCanvas() {{
 }}
 
 function updateRecordFrame() {{
-    if (!isRecording || !recordCtx) return;
+    if (!isRecording || !recordCtx || !state.simData) return;
     recordCtx.fillStyle = '#0b1120';
     recordCtx.fillRect(0, 0, 1200, 680);
 

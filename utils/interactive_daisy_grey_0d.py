@@ -1173,9 +1173,9 @@ function exportPointsToCsv() {{
         alert('尚無紀錄可供匯出！請先進行動態演變或調整光度。');
         return;
     }}
-    let csv = 'Luminosity,GreyDaisy_Percent,WhiteDaisy_Percent,BlackDaisy_Percent,BareGround_Percent,RegulatedTemp_C,DeadPlanetTemp_C,PhysicsMode\n';
+    let csv = 'Luminosity,GreyDaisy_Percent,WhiteDaisy_Percent,BlackDaisy_Percent,BareGround_Percent,RegulatedTemp_C,DeadPlanetTemp_C,PhysicsMode\\n';
     state.recordedPoints.forEach(p => {{
-        csv += `${{p.l.toFixed(2)}},${{(p.ag * 100).toFixed(2)}},${{(p.aw * 100).toFixed(2)}},${{(p.ab * 100).toFixed(2)}},${{(p.au * 100).toFixed(2)}},${{p.Tp.toFixed(2)}},${{p.Tnobio.toFixed(2)}},${{p.mode}}\n`;
+        csv += `${{p.l.toFixed(2)}},${{(p.ag * 100).toFixed(2)}},${{(p.aw * 100).toFixed(2)}},${{(p.ab * 100).toFixed(2)}},${{(p.au * 100).toFixed(2)}},${{p.Tp.toFixed(2)}},${{p.Tnobio.toFixed(2)}},${{p.mode}}\\n`;
     }});
     const blob = new Blob([csv], {{ type: 'text/csv;charset=utf-8;' }});
     const url = URL.createObjectURL(blob);
@@ -1843,6 +1843,8 @@ selPhysicsMode.addEventListener('change', e => {{
 
 // Export High-Res PNG Snapshot
 function exportSnapshotPng() {{
+    if (!state.simData) runSimulation();
+
     const dpr = window.devicePixelRatio || 1;
     const pad = 24;
     const headerH = 65;
@@ -1898,7 +1900,7 @@ function initRecordCanvas() {{
 }}
 
 function updateRecordFrame() {{
-    if (!isRecording || !recordCtx) return;
+    if (!isRecording || !recordCtx || !state.simData) return;
     recordCtx.fillStyle = '#0b1120';
     recordCtx.fillRect(0, 0, 1200, 680);
 

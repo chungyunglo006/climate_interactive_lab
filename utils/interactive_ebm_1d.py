@@ -973,6 +973,8 @@ function setParams(cfg) {{
 
 // Export High-Res PNG Snapshot
 function exportSnapshotPng() {{
+    if (!state.simData) runSimulation();
+
     const dpr = window.devicePixelRatio || 1;
     const pad = 24;
     const headerH = 65;
@@ -996,7 +998,7 @@ function exportSnapshotPng() {{
 
     ctx.font = '12px "JetBrains Mono", monospace';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`Frac_SC: ${{state.frac_sc.toFixed(2)}} | 均溫: ${{state.simData.meanT.toFixed(2)}}℃ | 冰緣: ${{state.simData.iceLat !== null ? state.simData.iceLat.toFixed(1) + '°N' : '無冰'}} | K: ${{state.k.toFixed(1)}}`, pad, pad + 40);
+    ctx.fillText(`Frac_SC: ${{state.frac_sc.toFixed(2)}} | 均溫: ${{state.simData.meanT.toFixed(2)}}℃ | 冰緣: ${{state.simData.iceEdge >= 90 ? '無冰蓋' : state.simData.iceEdge.toFixed(1) + '°N'}} | K: ${{state.k.toFixed(1)}}`, pad, pad + 40);
 
     ctx.drawImage(bg1, pad, pad + headerH, width, height);
     ctx.drawImage(fg1, pad, pad + headerH, width, height);
@@ -1027,7 +1029,7 @@ function initRecordCanvas() {{
 }}
 
 function updateRecordFrame() {{
-    if (!isRecording || !recordCtx) return;
+    if (!isRecording || !recordCtx || !state.simData) return;
     recordCtx.fillStyle = '#0b1120';
     recordCtx.fillRect(0, 0, 1200, 680);
 
@@ -1036,7 +1038,7 @@ function updateRecordFrame() {{
     recordCtx.fillText('1D Latitude Energy Balance Model Simulation Lab', 25, 35);
     recordCtx.fillStyle = '#94a3b8';
     recordCtx.font = '13px "JetBrains Mono", monospace';
-    recordCtx.fillText(`Frac_SC=${{state.frac_sc.toFixed(2)}} | MeanT=${{state.simData.meanT.toFixed(2)}}℃ | K=${{state.k.toFixed(1)}} | IceLat=${{state.simData.iceLat !== null ? state.simData.iceLat.toFixed(1) + '°N' : 'None'}}`, 25, 60);
+    recordCtx.fillText(`Frac_SC=${{state.frac_sc.toFixed(2)}} | MeanT=${{state.simData.meanT.toFixed(2)}}℃ | K=${{state.k.toFixed(1)}} | IceLat=${{state.simData.iceEdge >= 90 ? 'None' : state.simData.iceEdge.toFixed(1) + '°N'}}`, 25, 60);
 
     recordCtx.drawImage(bg1, 20, 80, 560, 560);
     recordCtx.drawImage(fg1, 20, 80, 560, 560);
