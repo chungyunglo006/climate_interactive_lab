@@ -185,7 +185,7 @@ select, input[type="number"].inline-input {{
 /* Wisconsin AOS Dashboard Section */
 .planet-dashboard-grid {{
     display: grid;
-    grid-template-columns: 220px 170px 1fr;
+    grid-template-columns: 200px 150px 1fr;
     gap: 16px;
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.7) 100%);
     border: 1px solid rgba(0, 229, 255, 0.2);
@@ -221,6 +221,94 @@ select, input[type="number"].inline-input {{
     display: flex;
     align-items: center;
     gap: 6px;
+}}
+
+.auto-table-container {{
+    width: 100%;
+    max-height: 155px;
+    overflow-y: auto;
+    overflow-x: auto;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}}
+
+.auto-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    text-align: center;
+    white-space: nowrap;
+}}
+
+.auto-table th {{
+    position: sticky;
+    top: 0;
+    background: rgba(30, 41, 59, 0.95);
+    color: #94a3b8;
+    font-weight: 600;
+    padding: 5px 6px;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.25);
+    z-index: 2;
+}}
+
+.auto-table td {{
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: #cbd5e1;
+}}
+
+.auto-table tr:hover {{
+    background: rgba(0, 229, 255, 0.08);
+}}
+
+.auto-table tr.active-row {{
+    background: rgba(34, 197, 94, 0.15);
+    border-left: 2px solid #22c55e;
+}}
+
+.chart-view-switch-bar {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 8px 14px;
+}}
+
+.switch-btn-group {{
+    display: flex;
+    gap: 6px;
+}}
+
+.view-btn {{
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}}
+
+.view-btn:hover {{
+    background: rgba(51, 65, 85, 0.9);
+    color: #f8fafc;
+}}
+
+.view-btn.active {{
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    border-color: #00e5ff;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
 }}
 
 .stats-grid {{
@@ -420,19 +508,26 @@ canvas {{
     <div class="action-row">
         <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設標準光度</button>
+        <button class="btn btn-secondary" id="btn_toggle_adv">⚙️ 進階參數</button>
+        <button class="btn btn-secondary" id="btn_export_png">📸 截圖 PNG</button>
+        <button class="btn btn-secondary" id="btn_record_video">🎥 錄製動態</button>
 
-        <span style="color: #64748b; margin-left: 8px;">物理體系:</span>
+        <span style="color: #64748b; margin-left: 6px;">物理體系:</span>
         <select id="sel_physics_mode">
             <option value="lovelock" {opt_lovelock_sel}>🌻 Lovelock (1983) 等效無大氣 (S₀=917)</option>
             <option value="stull" {opt_stull_sel}>🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)</option>
         </select>
 
-        <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
+        <span style="color: #64748b; margin-left: 6px;">演變變數:</span>
         <select id="sel_anim_target">
-            <option value="l_val">太陽光度 L</option>
-            <option value="gamma_val">死亡率 γ</option>
-            <option value="alpha_w">白雛菊反照率 α_w</option>
-            <option value="alpha_b">黑雛菊反照率 α_b</option>
+            <option value="l_val">☀️ 太陽光度 L</option>
+            <option value="alpha_w">⚪ 白雛菊反照率 α_w</option>
+            <option value="alpha_b">⚫ 黑雛菊反照率 α_b</option>
+            <option value="alpha_u">🟤 裸地反照率 α_u</option>
+            <option value="gamma_val">🍂 雛菊死亡率 γ</option>
+            <option value="q_val">🌡️ 局部溫差係數 q</option>
+            <option value="aw_init">🌱 白雛菊初始覆蓋率 aw,init</option>
+            <option value="ab_init">🌑 黑雛菊初始覆蓋率 ab,init</option>
         </select>
 
         <span style="color: #64748b;">方向:</span>
@@ -443,7 +538,44 @@ canvas {{
         </select>
 
         <span style="color: #64748b;">速率:</span>
-        <input type="number" class="inline-input" id="num_anim_speed" value="0.003" step="0.001" min="0.0005" max="0.03" style="width: 80px;">
+        <input type="number" class="inline-input" id="num_anim_speed" value="0.003" step="0.001" min="0.0005" max="0.03" style="width: 75px;">
+    </div>
+
+    <!-- Advanced Experimental Parameters Collapsible Panel -->
+    <div id="advanced_panel" style="display: none; margin-top: 14px; padding: 14px 18px; background: rgba(15, 23, 42, 0.7); border: 1px dashed rgba(0, 229, 255, 0.35); border-radius: 10px;">
+        <div style="font-size: 0.82rem; font-weight: 700; color: #00e5ff; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <span>⚙️ 進階實驗變數面板 (物種初始比例與數值微調 - 支援滑桿與數字直接輸入)</span>
+        </div>
+        <div class="ctrl-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>白雛菊初始覆蓋 aw,init</span><span>初始比例</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_aw_init" min="0.00" max="0.50" step="0.005" value="{aw_init}">
+                    <input type="number" class="val-input" id="num_aw_init" min="0.00" max="0.50" step="0.005" value="{aw_init}">
+                </div>
+            </div>
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>黑雛菊初始覆蓋 ab,init</span><span>初始比例</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_ab_init" min="0.00" max="0.50" step="0.005" value="{ab_init}">
+                    <input type="number" class="val-input" id="num_ab_init" min="0.00" max="0.50" step="0.005" value="{ab_init}">
+                </div>
+            </div>
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>數值步長 dt</span><span>時間微元</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_dt" min="0.02" max="0.40" step="0.01" value="{dt}">
+                    <input type="number" class="val-input" id="num_dt" min="0.02" max="0.40" step="0.01" value="{dt}">
+                </div>
+            </div>
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>迭代次數 N (步)</span><span>總步長</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_itera" min="50" max="400" step="10" value="{itera}">
+                    <input type="number" class="val-input" id="num_itera" min="50" max="400" step="10" value="{itera}">
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -468,18 +600,36 @@ canvas {{
         </div>
     </div>
 
-    <!-- Box 3: Empirical Lab Accumulator & Physics Insights -->
-    <div class="dash-box" style="align-items: flex-start; padding: 0 10px;">
-        <div class="dash-box-title">🧪 實測點記錄工坊 (Wisconsin AOS 實驗法)</div>
-        <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5; margin-bottom: 10px;">
-            如同威斯康辛大學互動實驗，每次改變光度 $L$ 或微氣候參數後，按下「記錄平衡點」，畫布將在溫度圖表留下實測散佈點。累積多點即可由實測數據親手拼出蓋婭恆溫倒 U 型曲線！
-        </p>
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
-            <button class="btn btn-secondary" id="btn_record_point" style="font-size: 0.8rem; padding: 5px 12px;">📍 記錄當前平衡點</button>
-            <button class="btn btn-secondary" id="btn_clear_points" style="font-size: 0.8rem; padding: 5px 12px;">🧹 清除實驗紀錄</button>
-            <span id="lbl_point_count" style="font-size: 0.78rem; color: #00e5ff; font-family: 'JetBrains Mono', monospace;">已記錄 0 個實測點</span>
+    <!-- Box 3: Auto-Equilibrium Data Logger & Physics Insights -->
+    <div class="dash-box" style="align-items: stretch; padding: 0 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div class="dash-box-title" style="margin-bottom: 0;">📋 平衡狀態自動紀錄表</div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <span id="lbl_point_count" style="font-size: 0.72rem; color: #00e5ff; font-family: 'JetBrains Mono', monospace;">0 筆紀錄</span>
+                <button class="btn btn-secondary" id="btn_clear_points" style="font-size: 0.72rem; padding: 3px 8px;">🧹 清除</button>
+                <button class="btn btn-secondary" id="btn_export_csv" style="font-size: 0.72rem; padding: 3px 8px;">📥 匯出</button>
+            </div>
         </div>
-        <div id="physics_mode_badge" style="font-size: 0.75rem; color: #64748b; background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 5px 8px; border-left: 3px solid {badge_border}; width: 100%;">
+
+        <div class="auto-table-container">
+            <table class="auto-table" id="table_points">
+                <thead>
+                    <tr>
+                        <th>光度 L</th>
+                        <th>白雛菊</th>
+                        <th>黑雛菊</th>
+                        <th>裸地</th>
+                        <th>調控均溫</th>
+                        <th>死星基線</th>
+                    </tr>
+                </thead>
+                <tbody id="table_points_body">
+                    <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 18px 6px;">動態演變時將自動即時記錄各光度平衡點...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="physics_mode_badge" style="font-size: 0.72rem; color: #64748b; background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 5px 8px; border-left: 3px solid {badge_border}; margin-top: 6px; width: 100%;">
             {badge_text}
         </div>
     </div>
@@ -508,11 +658,22 @@ canvas {{
     </div>
 </div>
 
+<!-- Chart View Switch Bar (Wisconsin AOS vs Time Dynamics) -->
+<div class="chart-view-switch-bar">
+    <div class="switch-btn-group">
+        <button class="view-btn active" id="btn_view_curves">☀️ 光度平衡曲線相圖 (L vs 平衡狀態)</button>
+        <button class="view-btn" id="btn_view_timeseries">⏱️ 單次演化時間動態消長 (Time Dynamics)</button>
+    </div>
+    <div id="view_mode_hint" style="font-size: 0.75rem; color: #94a3b8;">
+        隨著太陽光度演變，自動即時記錄平衡點並直接描繪出蓋亞恆溫倒 U 型相圖曲線！
+    </div>
+</div>
+
 <div class="charts-grid">
     <div class="chart-card">
         <div class="chart-header">
-            <div class="chart-title">🌼 物種覆蓋率時間消長 (60 FPS 族群動態)</div>
-            <div class="chart-legend">
+            <div class="chart-title" id="title_chart1">🌼 各光度平衡覆蓋率曲線 (物種接替消長)</div>
+            <div class="chart-legend" id="legend_chart1">
                 <div class="legend-item"><div class="legend-color" style="background: #f8fafc;"></div> 白雛菊</div>
                 <div class="legend-item"><div class="legend-color" style="background: #475569;"></div> 黑雛菊</div>
                 <div class="legend-item"><div class="legend-color" style="background: #d97706; border-top: 1px dashed;"></div> 裸地資源</div>
@@ -526,11 +687,11 @@ canvas {{
 
     <div class="chart-card">
         <div class="chart-header">
-            <div class="chart-title">🌡️ 行星溫度調控效應 vs 死星基線 (含實驗散佈點)</div>
-            <div class="chart-legend">
+            <div class="chart-title" id="title_chart2">🌡️ 蓋亞恆溫調控曲線 (Luminosity vs Tp)</div>
+            <div class="chart-legend" id="legend_chart2">
                 <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div> 調節 Tp</div>
                 <div class="legend-item"><div class="legend-color" style="background: #ef4444; border-top: 1px dashed;"></div> 死星基線</div>
-                <div class="legend-item"><div class="legend-color" style="background: #00e5ff; border-radius: 50%;"></div> 實測點</div>
+                <div class="legend-item"><div class="legend-color" style="background: #00e5ff; border-radius: 50%;"></div> 當前 L</div>
             </div>
         </div>
         <div class="canvas-container" id="container2">
@@ -557,10 +718,13 @@ let state = {{
     gamma_val: {gamma_val},
     aw_init: {aw_init},
     ab_init: {ab_init},
+    dt: {dt},
+    itera: {itera},
     physicsMode: '{physics_mode}', // 'lovelock' or 'stull'
     isPlaying: false,
     pingPongDir: 1,
     simData: null,
+    chartView: 'curves', // 'curves' or 'timeseries'
     recordedPoints: [] // {{ l, Tp, Tnobio, aw, ab, au, mode }}
 }};
 
@@ -588,10 +752,31 @@ const btnReset = document.getElementById('btn_reset');
 const selAnimTarget = document.getElementById('sel_anim_target');
 const selAnimDir = document.getElementById('sel_anim_dir');
 const numAnimSpeed = document.getElementById('num_anim_speed');
+const sliderAwInit = document.getElementById('slider_aw_init');
+const numAwInit = document.getElementById('num_aw_init');
+const sliderAbInit = document.getElementById('slider_ab_init');
+const numAbInit = document.getElementById('num_ab_init');
+const sliderDt = document.getElementById('slider_dt');
+const numDt = document.getElementById('num_dt');
+const sliderItera = document.getElementById('slider_itera');
+const numItera = document.getElementById('num_itera');
+const btnToggleAdv = document.getElementById('btn_toggle_adv');
+const advancedPanel = document.getElementById('advanced_panel');
+const btnExportPng = document.getElementById('btn_export_png');
+const btnRecordVideo = document.getElementById('btn_record_video');
 
-const btnRecordPoint = document.getElementById('btn_record_point');
 const btnClearPoints = document.getElementById('btn_clear_points');
+const btnExportCsv = document.getElementById('btn_export_csv');
 const lblPointCount = document.getElementById('lbl_point_count');
+const tablePointsBody = document.getElementById('table_points_body');
+
+const btnViewCurves = document.getElementById('btn_view_curves');
+const btnViewTimeseries = document.getElementById('btn_view_timeseries');
+const viewModeHint = document.getElementById('view_mode_hint');
+const titleChart1 = document.getElementById('title_chart1');
+const titleChart2 = document.getElementById('title_chart2');
+const legendChart1 = document.getElementById('legend_chart1');
+const legendChart2 = document.getElementById('legend_chart2');
 
 const statTp = document.getElementById('stat_tp');
 const statGaeaEval = document.getElementById('stat_gaea_eval');
@@ -655,7 +840,9 @@ function runSimulation() {{
 
     const isStull = state.physicsMode === 'stull';
 
-    for (let step = 0; step <= ITERA; step++) {{
+    const numSteps = Math.round(state.itera);
+    const dt = state.dt;
+    for (let step = 0; step <= numSteps; step++) {{
         const au = Math.max(0.0, Math.min(1.0, 1.0 - aw - ab));
         const alphaP = aw * state.alpha_w + ab * state.alpha_b + au * state.alpha_u;
 
@@ -683,7 +870,7 @@ function runSimulation() {{
         const betaW = betaGrowth(Tw);
         const betaB = betaGrowth(Tb);
 
-        t.push(step * DT);
+        t.push(step * dt);
         awList.push(aw);
         abList.push(ab);
         auList.push(au);
@@ -694,8 +881,8 @@ function runSimulation() {{
         const daw = aw * (au * betaW - state.gamma_val);
         const dab = ab * (au * betaB - state.gamma_val);
 
-        aw = Math.max(0.001, Math.min(0.99, aw + DT * daw));
-        ab = Math.max(0.001, Math.min(0.99, ab + DT * dab));
+        aw = Math.max(0.001, Math.min(0.99, aw + dt * daw));
+        ab = Math.max(0.001, Math.min(0.99, ab + dt * dab));
         if (aw + ab > 0.99) {{
             const sc = 0.99 / (aw + ab);
             aw *= sc; ab *= sc;
@@ -724,6 +911,7 @@ function runSimulation() {{
 
     drawPlanetDisk();
     drawThermometer();
+    autoRecordEquilibrium();
 }}
 
 // Draw Wisconsin AOS Feature 1: Planetary Live Disk
@@ -905,11 +1093,107 @@ function drawThermometer() {{
     ctxThermo.fillText(`死星: ${{d.Tnobio.toFixed(1)}}℃`, tubeX + tubeW + 12, tubeY + 36);
 }}
 
+function autoRecordEquilibrium() {{
+    if (!state.simData) return;
+    const d = state.simData;
+    const l = parseFloat(state.l_val.toFixed(2));
+    const pt = {{
+        l: l,
+        Tp: d.finalTp,
+        Tnobio: d.Tnobio,
+        aw: d.finalAw,
+        ab: d.finalAb,
+        au: d.finalAu,
+        tw: d.finalTw,
+        tb: d.finalTb,
+        mode: state.physicsMode
+    }};
+    const idx = state.recordedPoints.findIndex(p => Math.abs(p.l - l) < 0.005);
+    if (idx >= 0) {{
+        state.recordedPoints[idx] = pt;
+    }} else {{
+        state.recordedPoints.push(pt);
+        state.recordedPoints.sort((a, b) => a.l - b.l);
+    }}
+    updateTablePoints();
+}}
+
+function updateTablePoints() {{
+    lblPointCount.innerText = `${{state.recordedPoints.length}} 筆紀錄`;
+    if (state.recordedPoints.length === 0) {{
+        tablePointsBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 18px 6px;">動態演變時將自動即時記錄各光度平衡點...</td></tr>';
+        return;
+    }}
+    let html = '';
+    const curL = parseFloat(state.l_val.toFixed(2));
+    state.recordedPoints.forEach(p => {{
+        const isCur = Math.abs(p.l - curL) < 0.005;
+        const rowStyle = isCur ? 'style="background: rgba(0, 229, 255, 0.16); font-weight: bold;"' : '';
+        html += `<tr ${{rowStyle}}>
+            <td style="color: #00e5ff; font-weight: 600;">${{p.l.toFixed(2)}}</td>
+            <td style="color: #f8fafc;">${{(p.aw * 100).toFixed(1)}}%</td>
+            <td style="color: #94a3b8;">${{(p.ab * 100).toFixed(1)}}%</td>
+            <td style="color: #d97706;">${{(p.au * 100).toFixed(1)}}%</td>
+            <td style="color: #22c55e;">${{p.Tp.toFixed(2)}}℃</td>
+            <td style="color: #ef4444;">${{p.Tnobio.toFixed(1)}}℃</td>
+        </tr>`;
+    }});
+    tablePointsBody.innerHTML = html;
+}}
+
+function exportPointsToCsv() {{
+    if (state.recordedPoints.length === 0) {{
+        alert('尚無紀錄可供匯出！請先進行動態演變或調整光度。');
+        return;
+    }}
+    let csv = 'Luminosity,WhiteDaisy_Percent,BlackDaisy_Percent,BareGround_Percent,RegulatedTemp_C,DeadPlanetTemp_C,PhysicsMode\\n';
+    state.recordedPoints.forEach(p => {{
+        csv += `${{p.l.toFixed(2)}},${{(p.aw * 100).toFixed(2)}},${{(p.ab * 100).toFixed(2)}},${{(p.au * 100).toFixed(2)}},${{p.Tp.toFixed(2)}},${{p.Tnobio.toFixed(2)}},${{p.mode}}\\n`;
+    }});
+    const blob = new Blob([csv], {{ type: 'text/csv;charset=utf-8;' }});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `daisyworld_0d_equilibrium_${{state.physicsMode}}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}}
+
+function setChartView(view) {{
+    state.chartView = view;
+    if (view === 'curves') {{
+        btnViewCurves.classList.add('active');
+        btnViewTimeseries.classList.remove('active');
+        titleChart1.innerText = '🌼 各光度平衡覆蓋率相圖曲線 (Luminosity vs 平衡覆蓋率)';
+        titleChart2.innerText = '🌡️ 蓋亞恆溫調控相圖曲線 (Luminosity vs 平衡溫度)';
+        legendChart2.innerHTML = `
+            <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div> 調節 Tp</div>
+            <div class="legend-item"><div class="legend-color" style="background: #ef4444; border-top: 1px dashed;"></div> 死星基線</div>
+            <div class="legend-item"><div class="legend-color" style="background: #00e5ff; border-radius: 50%;"></div> 當前 L</div>
+        `;
+        viewModeHint.innerText = '隨著太陽光度演變，自動即時記錄平衡點並直接描繪出蓋亞恆溫倒 U 型相圖曲線！';
+    }} else {{
+        btnViewTimeseries.classList.add('active');
+        btnViewCurves.classList.remove('active');
+        titleChart1.innerText = '🌼 單次時間演化覆蓋率消長 (Time Dynamics)';
+        titleChart2.innerText = '🌡️ 單次時間演化溫度歷程 (Time Dynamics)';
+        legendChart2.innerHTML = `
+            <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div> 行星均溫 Tp</div>
+            <div class="legend-item"><div class="legend-color" style="background: #ef4444; border-top: 1px dashed;"></div> 死星基線</div>
+        `;
+        viewModeHint.innerText = '展示當前光度下 150 步時間動態數值演變歷程。';
+    }}
+    drawStaticBackgrounds();
+    renderDynamicTraces();
+}}
+
 function drawStaticBackgrounds() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
+    const isCurves = state.chartView === 'curves';
 
-    // --- Chart 1 Static BG (Coverage) ---
+    // --- Chart 1 Static BG ---
     ctxBg1.clearRect(0, 0, width, height);
     ctxBg1.fillStyle = 'rgba(15, 23, 42, 0.45)';
     ctxBg1.fillRect(margin.left, margin.top, plotW, plotH);
@@ -931,25 +1215,54 @@ function drawStaticBackgrounds() {{
         ctxBg1.fillText((val * 100).toFixed(0) + '%', margin.left - 8, y);
     }});
 
-    const xMax = ITERA * DT;
-    const xStep = Math.max(2, Math.round(xMax / 6));
     ctxBg1.textAlign = 'center';
     ctxBg1.textBaseline = 'top';
 
-    for (let xVal = 0; xVal <= xMax; xVal += xStep) {{
-        const x = margin.left + plotW * (xVal / xMax);
+    if (isCurves) {{
+        const lMin = 0.6, lMax = 1.6;
+        const lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6];
+        lTicks.forEach(lv => {{
+            const x = margin.left + plotW * ((lv - lMin) / (lMax - lMin));
+            ctxBg1.beginPath();
+            ctxBg1.moveTo(x, margin.top);
+            ctxBg1.lineTo(x, margin.top + plotH);
+            ctxBg1.stroke();
+            ctxBg1.fillText(lv.toFixed(1), x, margin.top + plotH + 8);
+        }});
+        // L=1.0 vertical subtle line
+        const x1 = margin.left + plotW * ((1.0 - lMin) / (lMax - lMin));
+        ctxBg1.save();
+        ctxBg1.setLineDash([2, 4]);
+        ctxBg1.strokeStyle = 'rgba(0, 229, 255, 0.25)';
         ctxBg1.beginPath();
-        ctxBg1.moveTo(x, margin.top);
-        ctxBg1.lineTo(x, margin.top + plotH);
+        ctxBg1.moveTo(x1, margin.top);
+        ctxBg1.lineTo(x1, margin.top + plotH);
         ctxBg1.stroke();
-        ctxBg1.fillText(xVal, x, margin.top + plotH + 8);
+        ctxBg1.restore();
+
+        ctxBg1.fillStyle = '#00e5ff';
+        ctxBg1.font = '11px "Plus Jakarta Sans", sans-serif';
+        ctxBg1.fillText('太陽光度 L (Luminosity)', margin.left + plotW / 2, margin.top + plotH + 24);
+    }} else {{
+        const xMax = ITERA * DT;
+        const xStep = Math.max(2, Math.round(xMax / 6));
+        for (let xVal = 0; xVal <= xMax; xVal += xStep) {{
+            const x = margin.left + plotW * (xVal / xMax);
+            ctxBg1.beginPath();
+            ctxBg1.moveTo(x, margin.top);
+            ctxBg1.lineTo(x, margin.top + plotH);
+            ctxBg1.stroke();
+            ctxBg1.fillText(xVal, x, margin.top + plotH + 8);
+        }}
+        ctxBg1.fillStyle = '#64748b';
+        ctxBg1.fillText('演化時間 (Time Steps)', margin.left + plotW / 2, margin.top + plotH + 24);
     }}
 
     ctxBg1.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctxBg1.strokeRect(margin.left, margin.top, plotW, plotH);
 
 
-    // --- Chart 2 Static BG (Temperature) ---
+    // --- Chart 2 Static BG ---
     ctxBg2.clearRect(0, 0, width, height);
     ctxBg2.fillStyle = 'rgba(15, 23, 42, 0.45)';
     ctxBg2.fillRect(margin.left, margin.top, plotW, plotH);
@@ -987,13 +1300,47 @@ function drawStaticBackgrounds() {{
     ctxBg2.fillText('最適生長點 22.5℃', margin.left + 8, yOpt - 7);
     ctxBg2.restore();
 
-    for (let xVal = 0; xVal <= xMax; xVal += xStep) {{
-        const x = margin.left + plotW * (xVal / xMax);
+    ctxBg2.textAlign = 'center';
+    ctxBg2.textBaseline = 'top';
+
+    if (isCurves) {{
+        const lMin = 0.6, lMax = 1.6;
+        const lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6];
+        lTicks.forEach(lv => {{
+            const x = margin.left + plotW * ((lv - lMin) / (lMax - lMin));
+            ctxBg2.beginPath();
+            ctxBg2.moveTo(x, margin.top);
+            ctxBg2.lineTo(x, margin.top + plotH);
+            ctxBg2.stroke();
+            ctxBg2.fillText(lv.toFixed(1), x, margin.top + plotH + 8);
+        }});
+        // L=1.0 vertical subtle line
+        const x1 = margin.left + plotW * ((1.0 - lMin) / (lMax - lMin));
+        ctxBg2.save();
+        ctxBg2.setLineDash([2, 4]);
+        ctxBg2.strokeStyle = 'rgba(0, 229, 255, 0.25)';
         ctxBg2.beginPath();
-        ctxBg2.moveTo(x, margin.top);
-        ctxBg2.lineTo(x, margin.top + plotH);
+        ctxBg2.moveTo(x1, margin.top);
+        ctxBg2.lineTo(x1, margin.top + plotH);
         ctxBg2.stroke();
-        ctxBg2.fillText(xVal, x, margin.top + plotH + 8);
+        ctxBg2.restore();
+
+        ctxBg2.fillStyle = '#00e5ff';
+        ctxBg2.font = '11px "Plus Jakarta Sans", sans-serif';
+        ctxBg2.fillText('太陽光度 L (Luminosity)', margin.left + plotW / 2, margin.top + plotH + 24);
+    }} else {{
+        const xMax = ITERA * DT;
+        const xStep = Math.max(2, Math.round(xMax / 6));
+        for (let xVal = 0; xVal <= xMax; xVal += xStep) {{
+            const x = margin.left + plotW * (xVal / xMax);
+            ctxBg2.beginPath();
+            ctxBg2.moveTo(x, margin.top);
+            ctxBg2.lineTo(x, margin.top + plotH);
+            ctxBg2.stroke();
+            ctxBg2.fillText(xVal, x, margin.top + plotH + 8);
+        }}
+        ctxBg2.fillStyle = '#64748b';
+        ctxBg2.fillText('演化時間 (Time Steps)', margin.left + plotW / 2, margin.top + plotH + 24);
     }}
 
     ctxBg2.strokeStyle = 'rgba(255, 255, 255, 0.12)';
@@ -1006,105 +1353,273 @@ function renderDynamicTraces() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
     const d = state.simData;
-    const xMax = ITERA * DT;
+    const isCurves = state.chartView === 'curves';
 
-    // --- Chart 1: Coverages ---
-    ctxFg1.clearRect(0, 0, width, height);
-    ctxFg1.save();
-    ctxFg1.beginPath();
-    ctxFg1.rect(margin.left, margin.top, plotW, plotH);
-    ctxFg1.clip();
+    if (isCurves) {{
+        const lMin = 0.6, lMax = 1.6;
+        const pts = state.recordedPoints;
 
-    // 1. Bare Ground (Orange dash)
-    ctxFg1.strokeStyle = '#d97706';
-    ctxFg1.lineWidth = 1.8;
-    ctxFg1.setLineDash([4, 3]);
-    ctxFg1.beginPath();
-    for (let i = 0; i < d.t.length; i++) {{
-        const x = margin.left + plotW * (d.t[i] / xMax);
-        const y = margin.top + plotH * (1.0 - d.au[i]);
-        if (i === 0) ctxFg1.moveTo(x, y);
-        else ctxFg1.lineTo(x, y);
-    }}
-    ctxFg1.stroke();
-    ctxFg1.setLineDash([]);
+        // --- Chart 1: Equilibrium Coverage vs L ---
+        ctxFg1.clearRect(0, 0, width, height);
+        ctxFg1.save();
+        ctxFg1.beginPath();
+        ctxFg1.rect(margin.left, margin.top, plotW, plotH);
+        ctxFg1.clip();
 
-    // 2. Black Daisy (Dark Slate Blue)
-    ctxFg1.shadowBlur = 6;
-    ctxFg1.shadowColor = '#475569';
-    ctxFg1.strokeStyle = '#64748b';
-    ctxFg1.lineWidth = 2.8;
-    ctxFg1.beginPath();
-    for (let i = 0; i < d.t.length; i++) {{
-        const x = margin.left + plotW * (d.t[i] / xMax);
-        const y = margin.top + plotH * (1.0 - d.ab[i]);
-        if (i === 0) ctxFg1.moveTo(x, y);
-        else ctxFg1.lineTo(x, y);
-    }}
-    ctxFg1.stroke();
+        if (pts.length > 0) {{
+            // 1. Bare Ground line
+            ctxFg1.strokeStyle = '#d97706';
+            ctxFg1.lineWidth = 2.0;
+            ctxFg1.setLineDash([4, 3]);
+            ctxFg1.beginPath();
+            pts.forEach((p, i) => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                const y = margin.top + plotH * (1.0 - p.au);
+                if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
+            }});
+            ctxFg1.stroke();
+            ctxFg1.setLineDash([]);
 
-    // 3. White Daisy (Pure White)
-    ctxFg1.shadowBlur = 8;
-    ctxFg1.shadowColor = '#ffffff';
-    ctxFg1.strokeStyle = '#f8fafc';
-    ctxFg1.lineWidth = 3.0;
-    ctxFg1.beginPath();
-    for (let i = 0; i < d.t.length; i++) {{
-        const x = margin.left + plotW * (d.t[i] / xMax);
-        const y = margin.top + plotH * (1.0 - d.aw[i]);
-        if (i === 0) ctxFg1.moveTo(x, y);
-        else ctxFg1.lineTo(x, y);
-    }}
-    ctxFg1.stroke();
-    ctxFg1.restore();
+            // 2. Black Daisy line
+            ctxFg1.shadowBlur = 6;
+            ctxFg1.shadowColor = '#475569';
+            ctxFg1.strokeStyle = '#64748b';
+            ctxFg1.lineWidth = 2.8;
+            ctxFg1.beginPath();
+            pts.forEach((p, i) => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                const y = margin.top + plotH * (1.0 - p.ab);
+                if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
+            }});
+            ctxFg1.stroke();
+
+            // 3. White Daisy line
+            ctxFg1.shadowBlur = 8;
+            ctxFg1.shadowColor = '#ffffff';
+            ctxFg1.strokeStyle = '#f8fafc';
+            ctxFg1.lineWidth = 3.0;
+            ctxFg1.beginPath();
+            pts.forEach((p, i) => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                const y = margin.top + plotH * (1.0 - p.aw);
+                if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
+            }});
+            ctxFg1.stroke();
+            ctxFg1.shadowBlur = 0;
+
+            // Draw Scatter Dots
+            pts.forEach(p => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                // White dot
+                ctxFg1.fillStyle = '#f8fafc';
+                ctxFg1.beginPath();
+                ctxFg1.arc(x, margin.top + plotH * (1.0 - p.aw), 2.5, 0, Math.PI * 2);
+                ctxFg1.fill();
+                // Black dot
+                ctxFg1.fillStyle = '#64748b';
+                ctxFg1.beginPath();
+                ctxFg1.arc(x, margin.top + plotH * (1.0 - p.ab), 2.5, 0, Math.PI * 2);
+                ctxFg1.fill();
+                // Bare ground dot
+                ctxFg1.fillStyle = '#d97706';
+                ctxFg1.beginPath();
+                ctxFg1.arc(x, margin.top + plotH * (1.0 - p.au), 2.0, 0, Math.PI * 2);
+                ctxFg1.fill();
+            }});
+        }}
+
+        // Current L vertical cursor line
+        const xCur1 = margin.left + plotW * ((state.l_val - lMin) / (lMax - lMin));
+        if (xCur1 >= margin.left && xCur1 <= margin.left + plotW) {{
+            ctxFg1.save();
+            ctxFg1.setLineDash([3, 3]);
+            ctxFg1.strokeStyle = '#00e5ff';
+            ctxFg1.lineWidth = 1.5;
+            ctxFg1.beginPath();
+            ctxFg1.moveTo(xCur1, margin.top);
+            ctxFg1.lineTo(xCur1, margin.top + plotH);
+            ctxFg1.stroke();
+            ctxFg1.restore();
+
+            // Glow dots for current point on Chart 1
+            const yCurW = margin.top + plotH * (1.0 - d.finalAw);
+            const yCurB = margin.top + plotH * (1.0 - d.finalAb);
+            const yCurU = margin.top + plotH * (1.0 - d.finalAu);
+            ctxFg1.fillStyle = '#00e5ff';
+            [yCurW, yCurB, yCurU].forEach(yPos => {{
+                ctxFg1.beginPath();
+                ctxFg1.arc(xCur1, yPos, 4.5, 0, Math.PI * 2);
+                ctxFg1.fill();
+            }});
+        }}
+        ctxFg1.restore();
 
 
-    // --- Chart 2: Temperature ---
-    ctxFg2.clearRect(0, 0, width, height);
-    const yMin2 = 0.0, yMax2 = 50.0;
-    ctxFg2.save();
-    ctxFg2.beginPath();
-    ctxFg2.rect(margin.left, margin.top, plotW, plotH);
-    ctxFg2.clip();
-
-    // Abiotic baseline horizontal line (Red dash)
-    const yDead = margin.top + plotH * (1.0 - (d.Tnobio - yMin2) / (yMax2 - yMin2));
-    ctxFg2.setLineDash([5, 4]);
-    ctxFg2.strokeStyle = '#ef4444';
-    ctxFg2.lineWidth = 2.0;
-    ctxFg2.beginPath();
-    ctxFg2.moveTo(margin.left, yDead);
-    ctxFg2.lineTo(margin.left + plotW, yDead);
-    ctxFg2.stroke();
-    ctxFg2.setLineDash([]);
-
-    // Regulated Planet Temperature (Green)
-    ctxFg2.shadowBlur = 8;
-    ctxFg2.shadowColor = '#22c55e';
-    ctxFg2.strokeStyle = '#22c55e';
-    ctxFg2.lineWidth = 3.2;
-    ctxFg2.beginPath();
-    for (let i = 0; i < d.t.length; i++) {{
-        const x = margin.left + plotW * (d.t[i] / xMax);
-        const y = margin.top + plotH * (1.0 - (d.Tp[i] - yMin2) / (yMax2 - yMin2));
-        if (i === 0) ctxFg2.moveTo(x, y);
-        else ctxFg2.lineTo(x, y);
-    }}
-    ctxFg2.stroke();
-
-    // Wisconsin AOS Feature 3: Overlay Multi-Run Empirical Experiment Scatter Points
-    state.recordedPoints.forEach(pt => {{
-        const x = margin.left + plotW * 0.92; // Displayed on equilibrium side
-        const yPt = margin.top + plotH * (1.0 - (pt.Tp - yMin2) / (yMax2 - yMin2));
-        ctxFg2.fillStyle = '#00e5ff';
-        ctxFg2.shadowBlur = 6;
-        ctxFg2.shadowColor = '#00e5ff';
+        // --- Chart 2: Equilibrium Temperature vs L ---
+        ctxFg2.clearRect(0, 0, width, height);
+        const yMin2 = 0.0, yMax2 = 50.0;
+        ctxFg2.save();
         ctxFg2.beginPath();
-        ctxFg2.arc(x, yPt, 5, 0, Math.PI * 2);
-        ctxFg2.fill();
-    }});
+        ctxFg2.rect(margin.left, margin.top, plotW, plotH);
+        ctxFg2.clip();
 
-    ctxFg2.restore();
+        if (pts.length > 0) {{
+            // 1. Abiotic Baseline (Red dashed line)
+            ctxFg2.strokeStyle = '#ef4444';
+            ctxFg2.lineWidth = 2.0;
+            ctxFg2.setLineDash([5, 4]);
+            ctxFg2.beginPath();
+            pts.forEach((p, i) => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                const y = margin.top + plotH * (1.0 - (p.Tnobio - yMin2) / (yMax2 - yMin2));
+                if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
+            }});
+            ctxFg2.stroke();
+            ctxFg2.setLineDash([]);
+
+            // 2. Regulated Planet Temperature (Green glow line)
+            ctxFg2.shadowBlur = 10;
+            ctxFg2.shadowColor = '#22c55e';
+            ctxFg2.strokeStyle = '#22c55e';
+            ctxFg2.lineWidth = 3.2;
+            ctxFg2.beginPath();
+            pts.forEach((p, i) => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                const y = margin.top + plotH * (1.0 - (p.Tp - yMin2) / (yMax2 - yMin2));
+                if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
+            }});
+            ctxFg2.stroke();
+            ctxFg2.shadowBlur = 0;
+
+            // Scatter dots
+            pts.forEach(p => {{
+                const x = margin.left + plotW * ((p.l - lMin) / (lMax - lMin));
+                const yDead = margin.top + plotH * (1.0 - (p.Tnobio - yMin2) / (yMax2 - yMin2));
+                const yTp = margin.top + plotH * (1.0 - (p.Tp - yMin2) / (yMax2 - yMin2));
+                ctxFg2.fillStyle = '#ef4444';
+                ctxFg2.beginPath();
+                ctxFg2.arc(x, yDead, 2.5, 0, Math.PI * 2);
+                ctxFg2.fill();
+                ctxFg2.fillStyle = '#22c55e';
+                ctxFg2.beginPath();
+                ctxFg2.arc(x, yTp, 3.5, 0, Math.PI * 2);
+                ctxFg2.fill();
+            }});
+        }}
+
+        // Current L vertical cursor line
+        const xCur2 = margin.left + plotW * ((state.l_val - lMin) / (lMax - lMin));
+        if (xCur2 >= margin.left && xCur2 <= margin.left + plotW) {{
+            ctxFg2.save();
+            ctxFg2.setLineDash([3, 3]);
+            ctxFg2.strokeStyle = '#00e5ff';
+            ctxFg2.lineWidth = 1.5;
+            ctxFg2.beginPath();
+            ctxFg2.moveTo(xCur2, margin.top);
+            ctxFg2.lineTo(xCur2, margin.top + plotH);
+            ctxFg2.stroke();
+            ctxFg2.restore();
+
+            // Glowing indicator dots at current Tp and Tnobio
+            const yCurTp = margin.top + plotH * (1.0 - (d.finalTp - yMin2) / (yMax2 - yMin2));
+            const yCurDead = margin.top + plotH * (1.0 - (d.Tnobio - yMin2) / (yMax2 - yMin2));
+            ctxFg2.fillStyle = '#00e5ff';
+            ctxFg2.shadowBlur = 8;
+            ctxFg2.shadowColor = '#00e5ff';
+            ctxFg2.beginPath();
+            ctxFg2.arc(xCur2, yCurTp, 5.5, 0, Math.PI * 2);
+            ctxFg2.fill();
+            ctxFg2.beginPath();
+            ctxFg2.arc(xCur2, yCurDead, 4.0, 0, Math.PI * 2);
+            ctxFg2.fill();
+            ctxFg2.shadowBlur = 0;
+        }}
+        ctxFg2.restore();
+
+    }} else {{
+        // --- Timeseries Mode ---
+        const xMax = ITERA * DT;
+
+        // Chart 1: Coverages
+        ctxFg1.clearRect(0, 0, width, height);
+        ctxFg1.save();
+        ctxFg1.beginPath();
+        ctxFg1.rect(margin.left, margin.top, plotW, plotH);
+        ctxFg1.clip();
+
+        // Bare Ground
+        ctxFg1.strokeStyle = '#d97706';
+        ctxFg1.lineWidth = 1.8;
+        ctxFg1.setLineDash([4, 3]);
+        ctxFg1.beginPath();
+        for (let i = 0; i < d.t.length; i++) {{
+            const x = margin.left + plotW * (d.t[i] / xMax);
+            const y = margin.top + plotH * (1.0 - d.au[i]);
+            if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
+        }}
+        ctxFg1.stroke();
+        ctxFg1.setLineDash([]);
+
+        // Black Daisy
+        ctxFg1.shadowBlur = 6;
+        ctxFg1.shadowColor = '#475569';
+        ctxFg1.strokeStyle = '#64748b';
+        ctxFg1.lineWidth = 2.8;
+        ctxFg1.beginPath();
+        for (let i = 0; i < d.t.length; i++) {{
+            const x = margin.left + plotW * (d.t[i] / xMax);
+            const y = margin.top + plotH * (1.0 - d.ab[i]);
+            if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
+        }}
+        ctxFg1.stroke();
+
+        // White Daisy
+        ctxFg1.shadowBlur = 8;
+        ctxFg1.shadowColor = '#ffffff';
+        ctxFg1.strokeStyle = '#f8fafc';
+        ctxFg1.lineWidth = 3.0;
+        ctxFg1.beginPath();
+        for (let i = 0; i < d.t.length; i++) {{
+            const x = margin.left + plotW * (d.t[i] / xMax);
+            const y = margin.top + plotH * (1.0 - d.aw[i]);
+            if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
+        }}
+        ctxFg1.stroke();
+        ctxFg1.restore();
+
+        // Chart 2: Temperature
+        ctxFg2.clearRect(0, 0, width, height);
+        const yMin2 = 0.0, yMax2 = 50.0;
+        ctxFg2.save();
+        ctxFg2.beginPath();
+        ctxFg2.rect(margin.left, margin.top, plotW, plotH);
+        ctxFg2.clip();
+
+        // Abiotic baseline horizontal line
+        const yDead = margin.top + plotH * (1.0 - (d.Tnobio - yMin2) / (yMax2 - yMin2));
+        ctxFg2.setLineDash([5, 4]);
+        ctxFg2.strokeStyle = '#ef4444';
+        ctxFg2.lineWidth = 2.0;
+        ctxFg2.beginPath();
+        ctxFg2.moveTo(margin.left, yDead);
+        ctxFg2.lineTo(margin.left + plotW, yDead);
+        ctxFg2.stroke();
+        ctxFg2.setLineDash([]);
+
+        // Regulated Planet Temperature
+        ctxFg2.shadowBlur = 8;
+        ctxFg2.shadowColor = '#22c55e';
+        ctxFg2.strokeStyle = '#22c55e';
+        ctxFg2.lineWidth = 3.2;
+        ctxFg2.beginPath();
+        for (let i = 0; i < d.t.length; i++) {{
+            const x = margin.left + plotW * (d.t[i] / xMax);
+            const y = margin.top + plotH * (1.0 - (d.Tp[i] - yMin2) / (yMax2 - yMin2));
+            if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
+        }}
+        ctxFg2.stroke();
+        ctxFg2.restore();
+    }}
 
     // Update Stats
     statTp.innerText = d.finalTp.toFixed(2) + ' ℃';
@@ -1138,11 +1653,15 @@ function animationStep() {{
     const target = selAnimTarget.value;
     const dirMode = selAnimDir.value;
 
-    let minV = 0.6, maxV = 1.6;
-    if (target === 'l_val') {{ minV = 0.6; maxV = 1.6; }}
+    let minV = 0.5, maxV = 1.8;
+    if (target === 'l_val') {{ minV = 0.5; maxV = 1.8; }}
     else if (target === 'gamma_val') {{ minV = 0.05; maxV = 0.5; }}
     else if (target === 'alpha_w') {{ minV = 0.5; maxV = 0.9; }}
     else if (target === 'alpha_b') {{ minV = 0.1; maxV = 0.45; }}
+    else if (target === 'alpha_u') {{ minV = 0.2; maxV = 0.8; }}
+    else if (target === 'q_val') {{ minV = 5.0; maxV = 40.0; }}
+    else if (target === 'aw_init') {{ minV = 0.001; maxV = 0.45; }}
+    else if (target === 'ab_init') {{ minV = 0.001; maxV = 0.45; }}
 
     let curVal = state[target];
 
@@ -1163,6 +1682,7 @@ function animationStep() {{
 
     runSimulation();
     renderDynamicTraces();
+    if (isRecording) updateRecordFrame();
 
     animFrameId = requestAnimationFrame(animationStep);
 }}
@@ -1176,6 +1696,14 @@ function syncControls(target, val) {{
         sliderAw.value = val; numAw.value = val.toFixed(2);
     }} else if (target === 'alpha_b') {{
         sliderAb.value = val; numAb.value = val.toFixed(2);
+    }} else if (target === 'alpha_u') {{
+        sliderAu.value = val; numAu.value = val.toFixed(2);
+    }} else if (target === 'q_val') {{
+        sliderQ.value = val; numQ.value = val.toFixed(1);
+    }} else if (target === 'aw_init') {{
+        sliderAwInit.value = val; numAwInit.value = val.toFixed(3);
+    }} else if (target === 'ab_init') {{
+        sliderAbInit.value = val; numAbInit.value = val.toFixed(3);
     }}
 }}
 
@@ -1221,6 +1749,10 @@ bindSync(sliderAw, numAw, 'alpha_w');
 bindSync(sliderAb, numAb, 'alpha_b');
 bindSync(sliderAu, numAu, 'alpha_u');
 bindSync(sliderQ, numQ, 'q_val');
+bindSync(sliderAwInit, numAwInit, 'aw_init');
+bindSync(sliderAbInit, numAbInit, 'ab_init');
+bindSync(sliderDt, numDt, 'dt');
+bindSync(sliderItera, numItera, 'itera');
 
 btnTogglePlay.addEventListener('click', togglePlay);
 
@@ -1244,28 +1776,170 @@ selPhysicsMode.addEventListener('change', e => {{
     renderDynamicTraces();
 }});
 
-// Wisconsin AOS Feature 3: Record Experiment Points
-btnRecordPoint.addEventListener('click', () => {{
-    if (!state.simData) return;
-    const d = state.simData;
-    state.recordedPoints.push({{
-        l: state.l_val,
-        Tp: d.finalTp,
-        Tnobio: d.Tnobio,
-        aw: d.finalAw,
-        ab: d.finalAb,
-        au: d.finalAu,
-        mode: state.physicsMode
-    }});
-    lblPointCount.innerText = `已記錄 ${{state.recordedPoints.length}} 個實測點`;
+
+// Export High-Res PNG Snapshot
+function exportSnapshotPng() {{
+    const dpr = window.devicePixelRatio || 1;
+    const pad = 24;
+    const headerH = 65;
+    const totalW = width * 2 + pad * 3;
+    const totalH = height + headerH + pad * 2;
+
+    const outCv = document.createElement('canvas');
+    outCv.width = totalW * dpr;
+    outCv.height = totalH * dpr;
+    outCv.style.width = totalW + 'px';
+    outCv.style.height = totalH + 'px';
+    const ctx = outCv.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    ctx.fillStyle = '#0b1120';
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    ctx.font = 'bold 18px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#00e5ff';
+    const modeName = state.physicsMode === 'stull' ? 'Wisconsin Stull (2000) 溫室大氣模式' : 'Lovelock (1983) 等效無大氣模式';
+    ctx.fillText(`Daisyworld 0D 經典雛菊世界實測 - [${{modeName}}]`, pad, pad + 18);
+
+    ctx.font = '12px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`光度 L: ${{state.l_val.toFixed(2)}} | Tp: ${{state.simData.finalTp.toFixed(2)}}℃ | 死星基線: ${{state.simData.Tnobio.toFixed(1)}}℃ | 白雛菊: ${{(state.simData.finalAw*100).toFixed(1)}}% | 黑雛菊: ${{(state.simData.finalAb*100).toFixed(1)}}%`, pad, pad + 40);
+
+    ctx.drawImage(bg1, pad, pad + headerH, width, height);
+    ctx.drawImage(fg1, pad, pad + headerH, width, height);
+
+    ctx.drawImage(bg2, pad * 2 + width, pad + headerH, width, height);
+    ctx.drawImage(fg2, pad * 2 + width, pad + headerH, width, height);
+
+    const link = document.createElement('a');
+    link.download = `daisyworld_0d_L${{state.l_val.toFixed(2)}}_${{state.physicsMode}}.png`;
+    link.href = outCv.toDataURL('image/png');
+    link.click();
+}}
+
+// Dynamic WebM Video Recording
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recordCanvas = null;
+let recordCtx = null;
+
+function initRecordCanvas() {{
+    if (!recordCanvas) {{
+        recordCanvas = document.createElement('canvas');
+        recordCanvas.width = 1200;
+        recordCanvas.height = 680;
+        recordCtx = recordCanvas.getContext('2d');
+    }}
+}}
+
+function updateRecordFrame() {{
+    if (!isRecording || !recordCtx) return;
+    recordCtx.fillStyle = '#0b1120';
+    recordCtx.fillRect(0, 0, 1200, 680);
+
+    recordCtx.fillStyle = '#00e5ff';
+    recordCtx.font = 'bold 20px "Plus Jakarta Sans", sans-serif';
+    recordCtx.fillText('Daisyworld Dynamic Evolution Lab (0D Classic)', 25, 35);
+    recordCtx.fillStyle = '#94a3b8';
+    recordCtx.font = '13px "JetBrains Mono", monospace';
+    recordCtx.fillText(`L=${{state.l_val.toFixed(2)}} | Tp=${{state.simData.finalTp.toFixed(2)}}℃ | Tnobio=${{state.simData.Tnobio.toFixed(1)}}℃ | Aw=${{(state.simData.finalAw*100).toFixed(1)}}% | Ab=${{(state.simData.finalAb*100).toFixed(1)}}%`, 25, 60);
+
+    if (cvPlanet) recordCtx.drawImage(cvPlanet, 1020, 10, 150, 150);
+
+    recordCtx.drawImage(bg1, 20, 80, 560, 560);
+    recordCtx.drawImage(fg1, 20, 80, 560, 560);
+
+    recordCtx.drawImage(bg2, 600, 80, 560, 560);
+    recordCtx.drawImage(fg2, 600, 80, 560, 560);
+}}
+
+function toggleRecordVideo() {{
+    if (!isRecording) {{
+        startRecording();
+    }} else {{
+        stopRecording();
+    }}
+}}
+
+function startRecording() {{
+    initRecordCanvas();
+    updateRecordFrame();
+    recordedChunks = [];
+
+    let stream = null;
+    try {{
+        stream = recordCanvas.captureStream(30);
+    }} catch(e) {{
+        alert('當前瀏覽器環境不支援 captureStream 錄製。');
+        return;
+    }}
+
+    let mimeType = 'video/webm;codecs=vp9';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {{
+        mimeType = 'video/webm';
+    }}
+
+    try {{
+        mediaRecorder = new MediaRecorder(stream, {{ mimeType }});
+    }} catch(e) {{
+        mediaRecorder = new MediaRecorder(stream);
+    }}
+
+    mediaRecorder.ondataavailable = e => {{
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    }};
+
+    mediaRecorder.onstop = () => {{
+        const blob = new Blob(recordedChunks, {{ type: 'video/webm' }});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `daisyworld_0d_dynamic_${{Date.now()}}.webm`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }};
+
+    mediaRecorder.start(100);
+    isRecording = true;
+    btnRecordVideo.innerText = '⏹️ 停止並下載動畫';
+    btnRecordVideo.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+
+    if (!state.isPlaying) togglePlay();
+}}
+
+function stopRecording() {{
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {{
+        mediaRecorder.stop();
+    }}
+    isRecording = false;
+    btnRecordVideo.innerText = '🎥 錄製動態';
+    btnRecordVideo.style.background = '';
+}}
+
+// Auto-Equilibrium Data Management & View Switching
+btnClearPoints.addEventListener('click', () => {{
+    state.recordedPoints = [];
+    updateTablePoints();
     renderDynamicTraces();
 }});
 
-btnClearPoints.addEventListener('click', () => {{
-    state.recordedPoints = [];
-    lblPointCount.innerText = '已記錄 0 個實測點';
-    renderDynamicTraces();
+btnExportCsv.addEventListener('click', exportPointsToCsv);
+btnViewCurves.addEventListener('click', () => setChartView('curves'));
+btnViewTimeseries.addEventListener('click', () => setChartView('timeseries'));
+
+btnToggleAdv.addEventListener('click', () => {{
+    const isHidden = advancedPanel.style.display === 'none';
+    advancedPanel.style.display = isHidden ? 'block' : 'none';
+    btnToggleAdv.style.background = isHidden ? 'rgba(0, 229, 255, 0.25)' : '';
+    btnToggleAdv.innerText = isHidden ? '🔼 收合進階參數' : '⚙️ 進階參數';
 }});
+
+btnExportPng.addEventListener('click', exportSnapshotPng);
+btnRecordVideo.addEventListener('click', toggleRecordVideo);
+
 
 // Scenario Presets
 selPreset.addEventListener('change', e => {{
@@ -1304,15 +1978,33 @@ fg1.addEventListener('mousemove', e => {{
     const mouseX = e.clientX - rect.left;
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
-        const normX = (mouseX - margin.left) / plotW;
-        const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
-        const d = state.simData;
-        if (d) {{
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 14) + 'px';
-            tooltip.style.top = (e.clientY - 25) + 'px';
-            tooltip.innerHTML = `時間: ${{d.t[idx].toFixed(1)}}<br>白雛菊: ${{(d.aw[idx]*100).toFixed(1)}}%<br>黑雛菊: ${{(d.ab[idx]*100).toFixed(1)}}%<br>裸地: ${{(d.au[idx]*100).toFixed(1)}}%<br>均溫: ${{d.Tp[idx].toFixed(2)}}℃`;
-            return;
+        if (state.chartView === 'curves') {{
+            const lMin = 0.6, lMax = 1.6;
+            const targetL = lMin + ((mouseX - margin.left) / plotW) * (lMax - lMin);
+            // Find closest recorded point
+            let closest = null, minDist = 0.08;
+            state.recordedPoints.forEach(p => {{
+                const dist = Math.abs(p.l - targetL);
+                if (dist < minDist) {{ minDist = dist; closest = p; }}
+            }});
+            if (closest) {{
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 14) + 'px';
+                tooltip.style.top = (e.clientY - 25) + 'px';
+                tooltip.innerHTML = `<b style="color: #00e5ff;">平衡光度 L: ${{closest.l.toFixed(2)}}</b><br>白雛菊: ${{(closest.aw * 100).toFixed(1)}}%<br>黑雛菊: ${{(closest.ab * 100).toFixed(1)}}%<br>裸地: ${{(closest.au * 100).toFixed(1)}}%`;
+                return;
+            }}
+        }} else {{
+            const normX = (mouseX - margin.left) / plotW;
+            const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
+            const d = state.simData;
+            if (d) {{
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 14) + 'px';
+                tooltip.style.top = (e.clientY - 25) + 'px';
+                tooltip.innerHTML = `時間: ${{d.t[idx].toFixed(1)}}<br>白雛菊: ${{(d.aw[idx] * 100).toFixed(1)}}%<br>黑雛菊: ${{(d.ab[idx] * 100).toFixed(1)}}%<br>裸地: ${{(d.au[idx] * 100).toFixed(1)}}%<br>均溫: ${{d.Tp[idx].toFixed(2)}}℃`;
+                return;
+            }}
         }}
     }}
     tooltip.style.display = 'none';
@@ -1328,15 +2020,33 @@ fg2.addEventListener('mousemove', e => {{
     const mouseX = e.clientX - rect.left;
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
-        const normX = (mouseX - margin.left) / plotW;
-        const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
-        const d = state.simData;
-        if (d) {{
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 14) + 'px';
-            tooltip.style.top = (e.clientY - 25) + 'px';
-            tooltip.innerHTML = `時間: ${{d.t[idx].toFixed(1)}}<br>行星均溫: ${{d.Tp[idx].toFixed(2)}}℃<br>白雛菊局地: ${{d.Tw[idx].toFixed(2)}}℃<br>黑雛菊局地: ${{d.Tb[idx].toFixed(2)}}℃<br>死星基線: ${{d.Tnobio.toFixed(1)}}℃`;
-            return;
+        if (state.chartView === 'curves') {{
+            const lMin = 0.6, lMax = 1.6;
+            const targetL = lMin + ((mouseX - margin.left) / plotW) * (lMax - lMin);
+            let closest = null, minDist = 0.08;
+            state.recordedPoints.forEach(p => {{
+                const dist = Math.abs(p.l - targetL);
+                if (dist < minDist) {{ minDist = dist; closest = p; }}
+            }});
+            if (closest) {{
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 14) + 'px';
+                tooltip.style.top = (e.clientY - 25) + 'px';
+                const diff = closest.Tp - closest.Tnobio;
+                tooltip.innerHTML = `<b style="color: #00e5ff;">平衡光度 L: ${{closest.l.toFixed(2)}}</b><br>調控均溫: <span style="color:#22c55e;">${{closest.Tp.toFixed(2)}}℃</span><br>死星基線: <span style="color:#ef4444;">${{closest.Tnobio.toFixed(1)}}℃</span><br>調節溫差: ${{(diff >= 0 ? '+' : '')}}${{diff.toFixed(2)}}℃`;
+                return;
+            }}
+        }} else {{
+            const normX = (mouseX - margin.left) / plotW;
+            const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
+            const d = state.simData;
+            if (d) {{
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 14) + 'px';
+                tooltip.style.top = (e.clientY - 25) + 'px';
+                tooltip.innerHTML = `時間: ${{d.t[idx].toFixed(1)}}<br>行星均溫: ${{d.Tp[idx].toFixed(2)}}℃<br>白雛菊局地: ${{d.Tw[idx].toFixed(2)}}℃<br>黑雛菊局地: ${{d.Tb[idx].toFixed(2)}}℃<br>死星基線: ${{d.Tnobio.toFixed(1)}}℃`;
+                return;
+            }}
         }}
     }}
     tooltip.style.display = 'none';

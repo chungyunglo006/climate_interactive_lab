@@ -369,6 +369,9 @@ canvas {{
     <div class="action-row">
         <button class="btn" id="btn_toggle_play">▶️ 開始動態演變</button>
         <button class="btn btn-secondary" id="btn_reset">🔄 重設現代地球</button>
+        <button class="btn btn-secondary" id="btn_toggle_adv">⚙️ 進階參數</button>
+        <button class="btn btn-secondary" id="btn_export_png">📸 截圖 PNG</button>
+        <button class="btn btn-secondary" id="btn_record_video">🎥 錄製動態</button>
 
         <span style="color: #64748b; margin-left: 8px;">視角範圍:</span>
         <select id="sel_view_domain">
@@ -378,10 +381,13 @@ canvas {{
 
         <span style="color: #64748b; margin-left: 8px;">演變變數:</span>
         <select id="sel_anim_target">
-            <option value="frac_sc">太陽常數因子 Frac_SC</option>
-            <option value="k">熱擴散係數 K</option>
-            <option value="tcrit">冰雪臨界溫 T_crit</option>
-            <option value="aice">冰雪反照率 a_ice</option>
+            <option value="frac_sc">☀️ 太陽常數因子 Frac_SC</option>
+            <option value="k">🌊 熱擴散係數 K</option>
+            <option value="tcrit">🧊 冰雪臨界溫 T_crit</option>
+            <option value="aice">❄️ 冰雪反照率 a_ice</option>
+            <option value="aland">🌱 無冰反照率 a_land</option>
+            <option value="a">🌫️ 長波輻射截距 A</option>
+            <option value="b">🌡️ 長波反饋斜率 B</option>
         </select>
 
         <span style="color: #64748b;">方向:</span>
@@ -393,6 +399,33 @@ canvas {{
 
         <span style="color: #64748b;">速率 (Δ/幀):</span>
         <input type="number" class="inline-input" id="num_anim_speed" value="0.002" step="0.001" min="0.0005" max="0.05" style="width: 85px;">
+    </div>
+    <!-- Advanced Experimental Parameters Collapsible Panel -->
+    <div id="advanced_panel" style="display: none; margin-top: 14px; padding: 14px 18px; background: rgba(15, 23, 42, 0.7); border: 1px dashed rgba(0, 229, 255, 0.35); border-radius: 10px;">
+        <div style="font-size: 0.82rem; font-weight: 700; color: #00e5ff; margin-bottom: 12px;">⚙️ 進階實驗變數面板 (長波出射反饋與數值模擬參數微調)</div>
+        <div class="ctrl-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>長波反饋斜率 B</span><span>W/m²/℃</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_b" min="1.0" max="3.5" step="0.1" value="{b_param}">
+                    <input type="number" class="val-input" id="num_b" min="1.0" max="3.5" step="0.1" value="{b_param}">
+                </div>
+            </div>
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>基礎太陽常數 SC</span><span>W/m²</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_sc" min="1200" max="1500" step="5" value="{sc}">
+                    <input type="number" class="val-input" id="num_sc" min="1200" max="1500" step="5" value="{sc}">
+                </div>
+            </div>
+            <div class="ctrl-item">
+                <span class="ctrl-label"><span>迭代次數 N (步)</span><span>年數步長</span></span>
+                <div class="ctrl-input-row">
+                    <input type="range" id="slider_itera" min="10" max="100" step="5" value="{itera}">
+                    <input type="number" class="val-input" id="num_itera" min="10" max="100" step="5" value="{itera}">
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -498,6 +531,16 @@ const numAland = document.getElementById('num_aland');
 const sliderA = document.getElementById('slider_a');
 const numA = document.getElementById('num_a');
 const selPreset = document.getElementById('sel_preset');
+const sliderB = document.getElementById('slider_b');
+const numB = document.getElementById('num_b');
+const sliderSc = document.getElementById('slider_sc');
+const numSc = document.getElementById('num_sc');
+const sliderItera = document.getElementById('slider_itera');
+const numItera = document.getElementById('num_itera');
+const btnToggleAdv = document.getElementById('btn_toggle_adv');
+const advancedPanel = document.getElementById('advanced_panel');
+const btnExportPng = document.getElementById('btn_export_png');
+const btnRecordVideo = document.getElementById('btn_record_video');
 
 const btnTogglePlay = document.getElementById('btn_toggle_play');
 const btnReset = document.getElementById('btn_reset');
@@ -820,6 +863,7 @@ function animationStep() {{
 
     runSimulation();
     renderDynamicTraces();
+    if (isRecording) updateRecordFrame();
 
     animFrameId = requestAnimationFrame(animationStep);
 }}
@@ -833,6 +877,12 @@ function syncControls(target, val) {{
         sliderTcrit.value = val; numTcrit.value = val.toFixed(1);
     }} else if (target === 'aice') {{
         sliderAice.value = val; numAice.value = val.toFixed(2);
+    }} else if (target === 'aland') {{
+        sliderAland.value = val; numAland.value = val.toFixed(2);
+    }} else if (target === 'a') {{
+        sliderA.value = val; numA.value = val.toFixed(1);
+    }} else if (target === 'b') {{
+        sliderB.value = val; numB.value = val.toFixed(1);
     }}
 }}
 
@@ -880,6 +930,9 @@ bindSync(sliderTcrit, numTcrit, 'tcrit');
 bindSync(sliderAice, numAice, 'aice');
 bindSync(sliderAland, numAland, 'aland');
 bindSync(sliderA, numA, 'a');
+bindSync(sliderB, numB, 'b');
+bindSync(sliderSc, numSc, 'sc');
+bindSync(sliderItera, numItera, 'itera');
 
 btnTogglePlay.addEventListener('click', togglePlay);
 
@@ -916,6 +969,156 @@ function setParams(cfg) {{
     runSimulation();
     renderDynamicTraces();
 }}
+
+
+// Export High-Res PNG Snapshot
+function exportSnapshotPng() {{
+    const dpr = window.devicePixelRatio || 1;
+    const pad = 24;
+    const headerH = 65;
+    const totalW = width * 2 + pad * 3;
+    const totalH = height + headerH + pad * 2;
+
+    const outCv = document.createElement('canvas');
+    outCv.width = totalW * dpr;
+    outCv.height = totalH * dpr;
+    outCv.style.width = totalW + 'px';
+    outCv.style.height = totalH + 'px';
+    const ctx = outCv.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    ctx.fillStyle = '#0b1120';
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    ctx.font = 'bold 18px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillText('1D 緯度能量平衡模型 (1D EBM) 空間剖面實測', pad, pad + 18);
+
+    ctx.font = '12px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`Frac_SC: ${{state.frac_sc.toFixed(2)}} | 均溫: ${{state.simData.meanT.toFixed(2)}}℃ | 冰緣: ${{state.simData.iceLat !== null ? state.simData.iceLat.toFixed(1) + '°N' : '無冰'}} | K: ${{state.k.toFixed(1)}}`, pad, pad + 40);
+
+    ctx.drawImage(bg1, pad, pad + headerH, width, height);
+    ctx.drawImage(fg1, pad, pad + headerH, width, height);
+
+    ctx.drawImage(bg2, pad * 2 + width, pad + headerH, width, height);
+    ctx.drawImage(fg2, pad * 2 + width, pad + headerH, width, height);
+
+    const link = document.createElement('a');
+    link.download = `ebm_1d_FracSC_${{state.frac_sc.toFixed(2)}}.png`;
+    link.href = outCv.toDataURL('image/png');
+    link.click();
+}}
+
+// Dynamic WebM Video Recording
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recordCanvas = null;
+let recordCtx = null;
+
+function initRecordCanvas() {{
+    if (!recordCanvas) {{
+        recordCanvas = document.createElement('canvas');
+        recordCanvas.width = 1200;
+        recordCanvas.height = 680;
+        recordCtx = recordCanvas.getContext('2d');
+    }}
+}}
+
+function updateRecordFrame() {{
+    if (!isRecording || !recordCtx) return;
+    recordCtx.fillStyle = '#0b1120';
+    recordCtx.fillRect(0, 0, 1200, 680);
+
+    recordCtx.fillStyle = '#00e5ff';
+    recordCtx.font = 'bold 20px "Plus Jakarta Sans", sans-serif';
+    recordCtx.fillText('1D Latitude Energy Balance Model Simulation Lab', 25, 35);
+    recordCtx.fillStyle = '#94a3b8';
+    recordCtx.font = '13px "JetBrains Mono", monospace';
+    recordCtx.fillText(`Frac_SC=${{state.frac_sc.toFixed(2)}} | MeanT=${{state.simData.meanT.toFixed(2)}}℃ | K=${{state.k.toFixed(1)}} | IceLat=${{state.simData.iceLat !== null ? state.simData.iceLat.toFixed(1) + '°N' : 'None'}}`, 25, 60);
+
+    recordCtx.drawImage(bg1, 20, 80, 560, 560);
+    recordCtx.drawImage(fg1, 20, 80, 560, 560);
+
+    recordCtx.drawImage(bg2, 600, 80, 560, 560);
+    recordCtx.drawImage(fg2, 600, 80, 560, 560);
+}}
+
+function toggleRecordVideo() {{
+    if (!isRecording) {{
+        startRecording();
+    }} else {{
+        stopRecording();
+    }}
+}}
+
+function startRecording() {{
+    initRecordCanvas();
+    updateRecordFrame();
+    recordedChunks = [];
+
+    let stream = null;
+    try {{
+        stream = recordCanvas.captureStream(30);
+    }} catch(e) {{
+        alert('當前瀏覽器環境不支援 captureStream 錄製。');
+        return;
+    }}
+
+    let mimeType = 'video/webm;codecs=vp9';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {{
+        mimeType = 'video/webm';
+    }}
+
+    try {{
+        mediaRecorder = new MediaRecorder(stream, {{ mimeType }});
+    }} catch(e) {{
+        mediaRecorder = new MediaRecorder(stream);
+    }}
+
+    mediaRecorder.ondataavailable = e => {{
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    }};
+
+    mediaRecorder.onstop = () => {{
+        const blob = new Blob(recordedChunks, {{ type: 'video/webm' }});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `ebm_1d_dynamic_${{Date.now()}}.webm`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }};
+
+    mediaRecorder.start(100);
+    isRecording = true;
+    btnRecordVideo.innerText = '⏹️ 停止並下載動畫';
+    btnRecordVideo.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+
+    if (!state.isPlaying) togglePlay();
+}}
+
+function stopRecording() {{
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {{
+        mediaRecorder.stop();
+    }}
+    isRecording = false;
+    btnRecordVideo.innerText = '🎥 錄製動態';
+    btnRecordVideo.style.background = '';
+}}
+
+btnToggleAdv.addEventListener('click', () => {{
+    const isHidden = advancedPanel.style.display === 'none';
+    advancedPanel.style.display = isHidden ? 'block' : 'none';
+    btnToggleAdv.style.background = isHidden ? 'rgba(0, 229, 255, 0.25)' : '';
+    btnToggleAdv.innerText = isHidden ? '🔼 收合進階參數' : '⚙️ 進階參數';
+}});
+
+btnExportPng.addEventListener('click', exportSnapshotPng);
+btnRecordVideo.addEventListener('click', toggleRecordVideo);
 
 btnReset.addEventListener('click', () => {{
     selPreset.value = 'modern';
