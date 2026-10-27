@@ -40,6 +40,7 @@ with col2:
     frame_duration = st.slider("每幀播放時間 (毫秒 ms)", 40, 200, 80, 10)
 with col3:
     max_frames = st.slider("最大抽取影格數", 10, 50, 30, 5)
+export_dpi = st.slider("輸出解析度 (DPI)", 100, 300, 180, 20, help="提高 DPI 可產生更清晰的動畫影格，但會增加渲染時間與檔案大小。")
 
 st.markdown("---")
 
@@ -55,7 +56,7 @@ if generate_btn:
         sampled_history = history[::step_stride]
 
         for idx, h in enumerate(sampled_history):
-            fig, ax = plt.subplots(figsize=(8, 4.5), dpi=100)
+            fig, ax = plt.subplots(figsize=(8, 4.5), dpi=export_dpi)
             fig.patch.set_facecolor('#0f172a')
             ax.set_facecolor('#1e293b')
 
@@ -85,7 +86,7 @@ if generate_btn:
         sampled_history = history[::step_stride]
 
         for idx, h in enumerate(sampled_history):
-            fig, ax = plt.subplots(figsize=(8, 4.5), dpi=100)
+            fig, ax = plt.subplots(figsize=(8, 4.5), dpi=export_dpi)
             fig.patch.set_facecolor('#0f172a')
             ax.set_facecolor('#1e293b')
 
@@ -115,7 +116,7 @@ if generate_btn:
         sampled_history = history[::step_stride]
 
         for idx, h in enumerate(sampled_history):
-            fig, ax = plt.subplots(figsize=(8, 4.5), dpi=100)
+            fig, ax = plt.subplots(figsize=(8, 4.5), dpi=export_dpi)
             fig.patch.set_facecolor('#0f172a')
             ax.set_facecolor('#1e293b')
 

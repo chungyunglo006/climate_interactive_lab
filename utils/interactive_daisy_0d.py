@@ -7,6 +7,8 @@ Enhanced with Wisconsin AOS (UW-Madison / Roland Stull 2000) features:
 4. Three Physics Frameworks (Lovelock 1983, Stull 2000, and configurable grey atmosphere)
 """
 
+from utils.media_export import inject_media_export_controls
+
 def get_interactive_daisy0d_html(
     s0=917.0, l_val=1.0, alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
     q_val=20.0, gamma_val=0.3, aw_init=0.01, ab_init=0.01, dt=0.1, itera=150,
@@ -1830,7 +1832,7 @@ selPhysicsMode.addEventListener('change', e => {{
 function exportSnapshotPng() {{
     if (!state.simData) runSimulation();
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Number(document.getElementById('sel_export_scale').value) || 1;
     const pad = 24;
     const headerH = 65;
     const totalW = width * 2 + pad * 3;
@@ -1867,8 +1869,9 @@ function exportSnapshotPng() {{
     ctx.drawImage(fg2, pad * 2 + width, pad + headerH, width, height);
 
     const link = document.createElement('a');
-    link.download = `daisyworld_0d_L${{state.l_val.toFixed(2)}}_${{state.physicsMode}}.png`;
-    link.href = outCv.toDataURL('image/png');
+    const imageFormat = document.getElementById('sel_image_format').value;
+    link.download = `daisyworld_0d_L${{state.l_val.toFixed(2)}}_${{state.physicsMode}}.${{imageFormat}}`;
+    link.href = outCv.toDataURL(`image/${{imageFormat}}`);
     link.click();
 }}
 
@@ -2119,4 +2122,4 @@ setTimeout(resizeCanvases, 50);
 </body>
 </html>
 """
-    return html_code
+    return inject_media_export_controls(html_code)

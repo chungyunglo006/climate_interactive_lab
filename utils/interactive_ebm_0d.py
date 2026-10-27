@@ -5,6 +5,8 @@ while simulation traces update smoothly via requestAnimationFrame at 60 FPS with
 Includes synchronized sliders + direct numeric input for all parameters and scenario presets.
 """
 
+from utils.media_export import inject_media_export_controls
+
 def get_interactive_ebm0d_html(
     s0=1368.0, t_init=288.0, alpha_ice=0.6, alpha_land=0.3,
     t_ice=263.0, t_land=283.0, epsilon=0.62, dt=0.1, itera=200
@@ -1004,7 +1006,7 @@ function setParams(cfg) {{
 function exportSnapshotPng() {{
     if (!state.simData) runSimulation();
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Number(document.getElementById('sel_export_scale').value) || 1;
     const pad = 24;
     const headerH = 65;
     const totalW = width * 2 + pad * 3;
@@ -1036,8 +1038,9 @@ function exportSnapshotPng() {{
     ctx.drawImage(fg2, pad * 2 + width, pad + headerH, width, height);
 
     const link = document.createElement('a');
-    link.download = `ebm_0d_S0_${{state.s0.toFixed(0)}}.png`;
-    link.href = outCv.toDataURL('image/png');
+    const imageFormat = document.getElementById('sel_image_format').value;
+    link.download = `ebm_0d_S0_${{state.s0.toFixed(0)}}.${{imageFormat}}`;
+    link.href = outCv.toDataURL(`image/${{imageFormat}}`);
     link.click();
 }}
 
@@ -1218,4 +1221,4 @@ setTimeout(resizeCanvases, 50);
 </body>
 </html>
 """
-    return html_code
+    return inject_media_export_controls(html_code)

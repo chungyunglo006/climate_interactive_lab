@@ -5,6 +5,8 @@ while latitudinal profiles and convergence traces update smoothly via requestAni
 Includes synchronized sliders + direct numeric keyboard inputs and scenario presets.
 """
 
+from utils.media_export import inject_media_export_controls
+
 def get_interactive_ebm1d_html(
     sc=1370.0, frac_sc=1.0, a_param=230.0, b_param=2.17, k_diff=3.87,
     aice=0.6, aland=0.3, tcrit=-10.0, itera=50
@@ -975,7 +977,7 @@ function setParams(cfg) {{
 function exportSnapshotPng() {{
     if (!state.simData) runSimulation();
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Number(document.getElementById('sel_export_scale').value) || 1;
     const pad = 24;
     const headerH = 65;
     const totalW = width * 2 + pad * 3;
@@ -1007,8 +1009,9 @@ function exportSnapshotPng() {{
     ctx.drawImage(fg2, pad * 2 + width, pad + headerH, width, height);
 
     const link = document.createElement('a');
-    link.download = `ebm_1d_FracSC_${{state.frac_sc.toFixed(2)}}.png`;
-    link.href = outCv.toDataURL('image/png');
+    const imageFormat = document.getElementById('sel_image_format').value;
+    link.download = `ebm_1d_FracSC_${{state.frac_sc.toFixed(2)}}.${{imageFormat}}`;
+    link.href = outCv.toDataURL(`image/${{imageFormat}}`);
     link.click();
 }}
 
@@ -1205,4 +1208,4 @@ setTimeout(resizeCanvases, 50);
 </body>
 </html>
 """
-    return html_code
+    return inject_media_export_controls(html_code)

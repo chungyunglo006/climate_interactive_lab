@@ -5,6 +5,8 @@ while latitudinal daisy coverage and temperature profiles update smoothly via re
 Includes synchronized sliders + direct numeric keyboard inputs and scenario presets.
 """
 
+from utils.media_export import inject_media_export_controls
+
 def get_interactive_daisy_grey_1d_html(
     s0=2100.0, l_val=1.0, alpha_w=0.75, alpha_b=0.25, alpha_g=0.50, alpha_u=0.5,
     q_val=20.0, gamma_val=0.3, k_diff=3.87, a_param=230.0, b_param=2.17, itera=150,
@@ -1126,7 +1128,7 @@ function setParams(cfg) {{
 function exportSnapshotPng() {{
     if (!state.simData) runSimulation();
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Number(document.getElementById('sel_export_scale').value) || 1;
     const pad = 24;
     const headerH = 65;
     const totalW = width * 2 + pad * 3;
@@ -1159,8 +1161,9 @@ function exportSnapshotPng() {{
     ctx.drawImage(fg2, pad * 2 + width, pad + headerH, width, height);
 
     const link = document.createElement('a');
-    link.download = `daisyworld_grey_1d_L${{state.l_val.toFixed(2)}}_${{state.physicsMode}}.png`;
-    link.href = outCv.toDataURL('image/png');
+    const imageFormat = document.getElementById('sel_image_format').value;
+    link.download = `daisyworld_grey_1d_L${{state.l_val.toFixed(2)}}_${{state.physicsMode}}.${{imageFormat}}`;
+    link.href = outCv.toDataURL(`image/${{imageFormat}}`);
     link.click();
 }}
 
@@ -1361,4 +1364,4 @@ setTimeout(resizeCanvases, 50);
 </body>
 </html>
 """
-    return html_code
+    return inject_media_export_controls(html_code)
