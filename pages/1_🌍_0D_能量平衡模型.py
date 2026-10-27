@@ -129,6 +129,22 @@ with st.expander("📐 點擊展開：模型數學原理與方程式"):
     \alpha_{\text{ice}} + (\alpha_{\text{land}} - \alpha_{\text{ice}}) \frac{T - T_{\text{ice}}}{T_{\text{land}} - T_{\text{ice}}}, & T_{\text{ice}} < T < T_{\text{land}} \\
     \alpha_{\text{land}}, & T \ge T_{\text{land}}
     \end{cases}""")
+    st.markdown(r"""
+    ### 參數說明
+    | 符號 | 意義 | 單位／範圍 |
+    |---|---|---|
+    | $T$ | 全球平均表面溫度（模型狀態變數） | K |
+    | $t$、$dt$ | 模擬時間與數值時間步長 | 年 |
+    | $C_{\text{ocean}}$ | 有效海洋熱容量 | J·m⁻²·K⁻¹ |
+    | $S_0$ | 太陽常數 | W·m⁻² |
+    | $R_{\text{in}}$、$R_{\text{out}}$ | 平均吸收短波入射與長波出射通量 | W·m⁻² |
+    | $\alpha(T)$ | 隨溫度改變的行星反照率 | 0–1 |
+    | $\alpha_{\text{ice}}$、$\alpha_{\text{land}}$ | 冰雪與無冰陸地反照率 | 0–1 |
+    | $T_{\text{ice}}$、$T_{\text{land}}$ | 反照率由冰雪轉變至無冰陸地的溫度界線 | K |
+    | $\epsilon$ | 大氣有效長波發射率 | 0–1 |
+    | $\sigma$ | Stefan–Boltzmann 常數 | $5.670374\times10^{-8}$ W·m⁻²·K⁻⁴ |
+    | $N$ | 數值迭代步數 | 步 |
+    """)
 
 # Main Tabs for Experiments
 tab1, tab2, tab3, tab4 = st.tabs([
@@ -472,4 +488,3 @@ with tab4:
 
 
 # Simulation complete
-

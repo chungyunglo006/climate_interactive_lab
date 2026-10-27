@@ -117,11 +117,26 @@ with st.expander("📐 點擊展開：灰雛菊模型原理與演化論批判"):
     $$\alpha_p = a_w \alpha_w + a_b \alpha_b + a_g \alpha_g + a_u \alpha_u$$
     - **物理大氣體系**：
       - **🌻 Lovelock (1983) 等效無大氣**：$T_p = \left( \frac{S_0 L (1 - \alpha_p)}{\sigma} \right)^{1/4} - 273.15$
-      - **🌍 Wisconsin Stull (2000) 單層溫室效應**：$q = \frac{S_0 L}{4\sigma}, \quad T_s^4 = 2 q (1 - \alpha_p), \quad T_p = (T_s^4)^{1/4} - 273.15$
+      - **🌍 Wisconsin Stull (2000) 單層溫室效應**：$q_{\text{flux}} = \frac{S_0 L}{4\sigma}, \quad T_s^4 = 2 q_{\text{flux}} (1 - \alpha_p), \quad T_p = (T_s^4)^{1/4} - 273.15$
     - 局地微氣候方面，灰雛菊反照率 $\alpha_g \approx \alpha_u = 0.50$：
       - Lovelock 模式：$T_g = T_p + q(\alpha_p - \alpha_g)$
-      - Stull 模式：$T_g^4 = \max(10^5, (1 - T_r) q (\alpha_p - \alpha_g) + T_s^4)$（其中水平傳輸 $T_r = 0.6$）
+      - Stull 模式：$T_g^4 = \max(10^5, (1 - T_r) q_{\text{flux}} (\alpha_p - \alpha_g) + T_s^4)$（其中水平傳輸 $T_r = 0.6$）
     - 模擬證明：即使加入中性灰雛菊，在黑白雛菊建立的最適溫度環境下，灰雛菊能共存，但在偏離最適溫度的極端氣候下，具備**主動微氣候保溫/散熱優勢**的黑白雛菊依然能在局部取得更高生長率！
+
+    ### 參數說明
+    | 符號 | 意義 | 單位／範圍 |
+    |---|---|---|
+    | $S_0$、$L$ | 基準太陽常數與相對太陽光度因子 | W·m⁻²；無因次 |
+    | $a_w,a_b,a_g,a_u$ | 白、黑、灰雛菊及裸地覆蓋率；總和為 1 | 0–1 |
+    | $\alpha_w,\alpha_b,\alpha_g,\alpha_u,\alpha_p$ | 各地表與行星平均反照率 | 0–1 |
+    | $T_p,T_s,T_w,T_b,T_g$ | 行星均溫、表面溫度與各雛菊局地溫度 | °C（輻射平衡使用 K⁴） |
+    | $\sigma$ | Stefan–Boltzmann 常數 | $5.670374\times10^{-8}$ W·m⁻²·K⁻⁴ |
+    | $q$ | Lovelock 模式局地微氣候溫度反饋係數 | ℃ |
+    | $q_{\text{flux}}=S_0L/(4\sigma)$ | Stull 模式入射平均輻射係數 | K⁴ |
+    | $T_r$ | Stull 模式水平熱傳輸係數（固定值 0.6） | 無因次 |
+    | $\beta(T)$ | 雛菊溫度生長函數，最適溫度為 22.5°C | 0–1 |
+    | $\gamma$ | 雛菊死亡率 | 每單位時間 |
+    | $dt,N$ | 數值時間步長與迭代步數 | 時間單位；步 |
     """)
 
 tab1, tab2, tab3 = st.tabs([
@@ -262,6 +277,5 @@ with tab3:
         file_name=f"daisyworld_grey_S0_{s0}_L_{l_val}.csv",
         mime="text/csv"
     )
-
 
 

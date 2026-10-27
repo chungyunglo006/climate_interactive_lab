@@ -100,6 +100,23 @@ with st.expander("📐 點擊展開：1D EBM 數學原理與各緯度熱傳導�
     - 迭代格式：
       $$T_i^{(n+1)} = \frac{R_{\text{in},i}(1 - \alpha_i^{(n)}) + K \bar{T}^{(n)} - A}{B + K}$$
     - 反照率開關：若 $T_i < T_{\text{crit}}$ 則 $\alpha_i = a_{\text{ice}}$，否則 $\alpha_i = a$。
+
+    ### 參數說明
+    | 符號 | 意義 | 單位／範圍 |
+    |---|---|---|
+    | $i$、$\phi_i$ | 緯度帶索引與其緯度 | 本模型 9 帶，約 6°–85° |
+    | $SC$ | 基準太陽常數 | W·m⁻² |
+    | $\mathrm{Frac\_SC}$ | 太陽強度相對因子 | 無因次 |
+    | $\mathrm{SunWt}_i$ | 緯度帶日照權重 | 無因次 |
+    | $R_{\mathrm{in},i}$ | 緯度帶平均入射短波輻射，$SC\,\mathrm{Frac\_SC}\,\mathrm{SunWt}_i/4$ | W·m⁻² |
+    | $\alpha_i$ | 緯度帶反照率 | 0–1 |
+    | $a_{\mathrm{ice}}$、$a$ | 冰雪與無冰地表反照率 | 0–1 |
+    | $T_i$、$\bar T$ | 緯度帶溫度與以 $\cos\phi_i$ 加權的全球平均溫度 | °C |
+    | $T_{\mathrm{crit}}$ | 反照率冰雪／無冰切換臨界溫度 | °C |
+    | $A$、$B$ | Budyko 線性長波出射公式 $A+B T_i$ 的截距與斜率 | W·m⁻²；W·m⁻²·°C⁻¹ |
+    | $K$ | 經向熱擴散係數 | W·m⁻²·°C⁻¹ |
+    | $F_i$ | 緯度帶相對全球均溫的經向熱輸送 | W·m⁻² |
+    | $n$、$N$ | 迭代索引與總迭代步數 | 步 |
     """)
 
 tab1, tab2, tab3, tab4 = st.tabs([
@@ -277,6 +294,5 @@ with tab4:
         file_name=f"ebm1d_SC_{sc}_FracSC_{frac_sc}_K_{k_diff}.csv",
         mime="text/csv"
     )
-
 
 

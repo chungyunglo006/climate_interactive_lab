@@ -108,6 +108,34 @@ with st.sidebar:
     - **灰雛菊 ($a_g$)**：中性反照率 (0.50)，在溫度適中的中緯度溫帶地區具競爭力。
     """)
 
+with st.expander("📐 點擊展開：1D 灰雛菊世界公式與參數說明"):
+    st.markdown(r"""
+    ### 數學模型
+    各緯度帶 $j$ 的行星反照率為
+    $$\alpha_{p,j}=a_{w,j}\alpha_w+a_{b,j}\alpha_b+a_{g,j}\alpha_g+a_{u,j}\alpha_u,\quad
+    a_{u,j}=1-a_{w,j}-a_{b,j}-a_{g,j}.$$
+    - **有大氣模式**：$R_{\mathrm{in},j}(1-\alpha_{p,j})+K\bar T-A=(B+K)T_j$。
+    - **無大氣模式**：$T_j=\left[\max\left(1,R_{\mathrm{in},j}(1-\alpha_{p,j})\right)/\sigma\right]^{1/4}-273.15$，且 $K=0$。
+    - **局地微氣候**：$T_{x,j}=T_j+q(\alpha_{p,j}-\alpha_x)$，其中 $x\in\{w,b,g\}$。
+    - **物種消長**：$\frac{da_{x,j}}{dt}=a_{x,j}\left(a_{u,j}\beta(T_{x,j})-\gamma\right)$，其中 $\beta(T)=\max\left(0,1-0.003265(22.5-T)^2\right)$。
+
+    ### 參數說明
+    | 符號 | 意義 | 單位／範圍 |
+    |---|---|---|
+    | $j,\phi_j$ | 緯度帶索引與緯度（本模型 9 帶） | 約 6°–85° |
+    | $S_0,L,\mathrm{SunWt}_j$ | 太陽常數、相對光度因子與緯度日照權重 | W·m⁻²；無因次 |
+    | $R_{\mathrm{in},j}$ | 緯度帶平均入射短波輻射，$S_0L\,\mathrm{SunWt}_j/4$ | W·m⁻² |
+    | $a_{w,j},a_{b,j},a_{g,j},a_{u,j}$ | 白、黑、灰雛菊及裸地覆蓋率；總和為 1 | 0–1 |
+    | $\alpha_w,\alpha_b,\alpha_g,\alpha_u,\alpha_{p,j}$ | 各地表與緯度帶行星平均反照率 | 0–1 |
+    | $T_j,\bar T$ | 緯度帶溫度與以 $\cos\phi_j$ 加權的全球平均溫度 | °C |
+    | $A,B$ | 有大氣模式的 Budyko 長波出射截距與斜率 | W·m⁻²；W·m⁻²·°C⁻¹ |
+    | $K$ | 經向熱輸送係數；無大氣模式設為 0 | W·m⁻²·°C⁻¹ |
+    | $q$ | 雛菊局地微氣候溫度反饋係數 | ℃ |
+    | $\sigma$ | Stefan–Boltzmann 常數（無大氣模式使用） | $5.670374\times10^{-8}$ W·m⁻²·K⁻⁴ |
+    | $\beta(T)$、$\gamma$ | 溫度生長函數與死亡率 | 0–1；每單位時間 |
+    | $dt,N$ | 數值時間步長與迭代步數 | 時間單位；步 |
+    """)
+
 # Run Simulation
 history_grey_1d, lats_grey_1d, temp_nobio_g = run_daisyworld_with_grey_1d(
     S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_g=alpha_g, alpha_u=alpha_u,
@@ -260,6 +288,5 @@ with tab4:
         file_name=f"daisyworld1d_grey_S0_{s0}_L_{l_val}.csv",
         mime="text/csv"
     )
-
 
 

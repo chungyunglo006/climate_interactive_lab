@@ -4,19 +4,27 @@ Enhanced with Wisconsin AOS (UW-Madison / Roland Stull 2000) features:
 1. Circular Planetary Live Disk (Pie & Organic Disk with Atmospheric Glow)
 2. Precision Vertical Mercury Thermometer (Comparing Tp vs T_dead across habitability zones)
 3. Multi-Run Empirical Phase Accumulator (Log experiment scatter points)
-4. Dual Physics Framework Selector (Lovelock 1983 equivalent model vs Stull 2000 modern Earth + single-layer greenhouse)
+4. Three Physics Frameworks (Lovelock 1983, Stull 2000, and configurable grey atmosphere)
 """
 
 def get_interactive_daisy0d_html(
     s0=917.0, l_val=1.0, alpha_w=0.75, alpha_b=0.25, alpha_u=0.5,
     q_val=20.0, gamma_val=0.3, aw_init=0.01, ab_init=0.01, dt=0.1, itera=150,
-    physics_mode="lovelock"
+    physics_mode="lovelock", epsilon=0.62
 ):
     """Generates self-contained hardware-accelerated interactive canvas HTML for 0D Daisyworld."""
     opt_lovelock_sel = "selected" if physics_mode == "lovelock" else ""
     opt_stull_sel = "selected" if physics_mode == "stull" else ""
-    badge_text = "🌻 Lovelock (1983)：S₀=917 W/m² (等效無大氣單一常數，光度 L=1.0 正處於黑白雛菊共生的恆溫平台)。" if physics_mode == "lovelock" else "🌍 Stull (2000)：S₀=1368 W/m² + 單層溫室效應 (T_s⁴ = 2T_e⁴) + 水平傳輸 Tr=0.6。在 L=1.0 下溫室增溫使黑白雛菊穩定共存繁盛！"
-    badge_border = "#00e5ff" if physics_mode == "lovelock" else "#22c55e"
+    opt_grey_sel = "selected" if physics_mode == "grey" else ""
+    if physics_mode == "lovelock":
+        badge_text = "🌻 Lovelock (1983)：S₀=917 W/m²（等效無大氣）；採用局地微氣候溫度反饋。"
+        badge_border = "#00e5ff"
+    elif physics_mode == "grey":
+        badge_text = f"🌡️ 半透明灰體大氣 Grey：S₀={s0:g} W/m²、ε={epsilon:.2f} + 水平傳輸 Tr=0.6。"
+        badge_border = "#a78bfa"
+    else:
+        badge_text = "🌍 Stull (2000)：S₀=1368 W/m² + 單層溫室效應 (T_s⁴ = 2T_e⁴) + 水平傳輸 Tr=0.6。"
+        badge_border = "#22c55e"
     html_code = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -503,6 +511,13 @@ canvas {{
                 <input type="number" class="val-input" id="num_q" min="5.0" max="40.0" step="1.0" value="{q_val}">
             </div>
         </div>
+        <div class="ctrl-item">
+            <span class="ctrl-label"><span>灰體大氣放射率 ε</span><span>Grey 模式</span></span>
+            <div class="ctrl-input-row">
+                <input type="range" id="slider_epsilon" min="0.1" max="1.0" step="0.01" value="{epsilon}">
+                <input type="number" class="val-input" id="num_epsilon" min="0.1" max="1.0" step="0.01" value="{epsilon}">
+            </div>
+        </div>
     </div>
 
     <div class="action-row">
@@ -516,6 +531,7 @@ canvas {{
         <select id="sel_physics_mode">
             <option value="lovelock" {opt_lovelock_sel}>🌻 Lovelock (1983) 等效無大氣 (S₀=917)</option>
             <option value="stull" {opt_stull_sel}>🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)</option>
+            <option value="grey" {opt_grey_sel}>🌡️ 半透明灰體大氣 Grey (自訂 ε)</option>
         </select>
 
         <span style="color: #64748b; margin-left: 6px;">演變變數:</span>
@@ -715,6 +731,7 @@ let state = {{
     alpha_b: {alpha_b},
     alpha_u: {alpha_u},
     q_val: {q_val},
+    epsilon: {epsilon},
     gamma_val: {gamma_val},
     aw_init: {aw_init},
     ab_init: {ab_init},
@@ -839,6 +856,7 @@ function runSimulation() {{
     let ab = state.ab_init;
 
     const isStull = state.physicsMode === 'stull';
+    const isGrey = state.physicsMode === 'grey';
 
     const numSteps = Math.round(state.itera);
     const dt = state.dt;
@@ -848,13 +866,13 @@ function runSimulation() {{
 
         let TpC, Tw, Tb;
 
-        if (!isStull) {{
+        if (!isStull && !isGrey) {{
             // --- 🌻 Lovelock 1983 (Equivalent solar constant, no atmosphere) ---
             const TpK = Math.pow((state.s0 * state.l_val * (1.0 - alphaP)) / SIGMA, 0.25);
             TpC = TpK - 273.15;
             Tw = TpC + state.q_val * (alphaP - state.alpha_w);
             Tb = TpC + state.q_val * (alphaP - state.alpha_b);
-        }} else {{
+        }} else if (isStull) {{
             // --- 🌍 Wisconsin Stull 2000 (S0 = 1368, single-layer greenhouse + Tr = 0.6) ---
             const q = (state.s0 * state.l_val) / (4.0 * SIGMA);
             const Te4 = q * (1.0 - alphaP);
@@ -863,6 +881,16 @@ function runSimulation() {{
             const Tr = 0.6; // horizontal heat transport parameter
             const Tw4 = Math.max(1e5, (1.0 - Tr) * q * (alphaP - state.alpha_w) + Ts4);
             const Tb4 = Math.max(1e5, (1.0 - Tr) * q * (alphaP - state.alpha_b) + Ts4);
+            Tw = Math.pow(Tw4, 0.25) - 273.15;
+            Tb = Math.pow(Tb4, 0.25) - 273.15;
+        }} else {{
+            const qFlux = (state.s0 * state.l_val) / (4.0 * SIGMA);
+            const epsilon = Math.max(1e-6, Math.min(1.0, state.epsilon));
+            const Ts4 = qFlux * (1.0 - alphaP) / (1.0 - epsilon / 2.0);
+            TpC = Math.pow(Math.max(1.0, Ts4), 0.25) - 273.15;
+            const Tr = 0.6;
+            const Tw4 = Math.max(1e5, (1.0 - Tr) * qFlux * (alphaP - state.alpha_w) + Ts4);
+            const Tb4 = Math.max(1e5, (1.0 - Tr) * qFlux * (alphaP - state.alpha_b) + Ts4);
             Tw = Math.pow(Tw4, 0.25) - 273.15;
             Tb = Math.pow(Tb4, 0.25) - 273.15;
         }}
@@ -890,11 +918,16 @@ function runSimulation() {{
     }}
 
     let Tnobio;
-    if (!isStull) {{
+    if (!isStull && !isGrey) {{
         Tnobio = Math.pow((state.s0 * state.l_val * (1.0 - state.alpha_u)) / SIGMA, 0.25) - 273.15;
-    }} else {{
+    }} else if (isStull) {{
         const qDead = (state.s0 * state.l_val) / (4.0 * SIGMA);
         Tnobio = Math.pow(2.0 * qDead * (1.0 - state.alpha_u), 0.25) - 273.15;
+    }} else {{
+        const qDead = (state.s0 * state.l_val) / (4.0 * SIGMA);
+        const epsilon = Math.max(1e-6, Math.min(1.0, state.epsilon));
+        const Ts4Dead = qDead * (1.0 - state.alpha_u) / (1.0 - epsilon / 2.0);
+        Tnobio = Math.pow(Math.max(1.0, Ts4Dead), 0.25) - 273.15;
     }}
 
     state.simData = {{
@@ -1749,6 +1782,16 @@ bindSync(sliderAw, numAw, 'alpha_w');
 bindSync(sliderAb, numAb, 'alpha_b');
 bindSync(sliderAu, numAu, 'alpha_u');
 bindSync(sliderQ, numQ, 'q_val');
+const sliderEpsilon = document.getElementById('slider_epsilon');
+const numEpsilon = document.getElementById('num_epsilon');
+bindSync(sliderEpsilon, numEpsilon, 'epsilon');
+function updateGreyBadge() {{
+    if (state.physicsMode === 'grey') {{
+        physicsModeBadge.innerHTML = `🌡️ 半透明灰體大氣 Grey：S₀=${{state.s0.toFixed(1)}} W/m²、ε=${{state.epsilon.toFixed(2)}} + 水平傳輸 Tr=0.6。`;
+    }}
+}}
+sliderEpsilon.addEventListener('input', updateGreyBadge);
+numEpsilon.addEventListener('input', updateGreyBadge);
 bindSync(sliderAwInit, numAwInit, 'aw_init');
 bindSync(sliderAbInit, numAbInit, 'ab_init');
 bindSync(sliderDt, numDt, 'dt');
@@ -1760,15 +1803,21 @@ btnTogglePlay.addEventListener('click', togglePlay);
 selPhysicsMode.addEventListener('change', e => {{
     state.physicsMode = e.target.value;
     if (state.physicsMode === 'stull') {{
-        state.s0 = 1368.0;
-        sliderS0.value = 1368;
-        numS0.value = 1368;
+        if (state.s0 === 917.0) state.s0 = 1368.0;
+        sliderS0.value = state.s0;
+        numS0.value = state.s0;
         physicsModeBadge.innerHTML = '🌍 Stull (2000)：S₀=1368 W/m² + 單層溫室效應 (T_s⁴ = 2T_e⁴) + 水平傳輸 Tr=0.6。在 L=1.0 下溫室增溫使黑白雛菊穩定共存繁盛！';
         physicsModeBadge.style.borderLeftColor = '#22c55e';
+    }} else if (state.physicsMode === 'grey') {{
+        if (state.s0 === 917.0) state.s0 = 1368.0;
+        sliderS0.value = state.s0;
+        numS0.value = state.s0;
+        physicsModeBadge.innerHTML = `🌡️ 半透明灰體大氣 Grey：S₀=${{state.s0.toFixed(1)}} W/m²、ε=${{state.epsilon.toFixed(2)}} + 水平傳輸 Tr=0.6。`;
+        physicsModeBadge.style.borderLeftColor = '#a78bfa';
     }} else {{
-        state.s0 = 917.0;
-        sliderS0.value = 917;
-        numS0.value = 917;
+        if (state.s0 === 1368.0) state.s0 = 917.0;
+        sliderS0.value = state.s0;
+        numS0.value = state.s0;
         physicsModeBadge.innerHTML = '🌻 Lovelock (1983)：S₀=917 W/m² (等效無大氣單一常數，光度 L=1.0 正處於黑白雛菊共生的恆溫平台)。';
         physicsModeBadge.style.borderLeftColor = '#00e5ff';
     }}
@@ -1800,7 +1849,11 @@ function exportSnapshotPng() {{
 
     ctx.font = 'bold 18px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#00e5ff';
-    const modeName = state.physicsMode === 'stull' ? 'Wisconsin Stull (2000) 溫室大氣模式' : 'Lovelock (1983) 等效無大氣模式';
+    const modeName = state.physicsMode === 'stull'
+        ? 'Wisconsin Stull (2000) 溫室大氣模式'
+        : state.physicsMode === 'grey'
+            ? `Grey 灰體大氣模式 (ε=${{state.epsilon.toFixed(2)}})`
+            : 'Lovelock (1983) 等效無大氣模式';
     ctx.fillText(`Daisyworld 0D 經典雛菊世界實測 - [${{modeName}}]`, pad, pad + 18);
 
     ctx.font = '12px "JetBrains Mono", monospace';

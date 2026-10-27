@@ -21,7 +21,10 @@ from models.daisy_0d import (
     beta_growth
 )
 import streamlit.components.v1 as components
-from utils.interactive_daisy_0d import get_interactive_daisy0d_html
+import importlib
+import utils.interactive_daisy_0d as interactive_daisy_0d
+
+interactive_daisy_0d = importlib.reload(interactive_daisy_0d)
 
 st.set_page_config(
     page_title="0D 經典雛菊世界 (Classic Daisyworld) | 獨立實驗網站",
@@ -75,21 +78,43 @@ with st.sidebar:
         "🌐 物理大氣體系 (Atmosphere Framework)",
         [
             "🌻 Lovelock (1983) 等效無大氣 (S₀=917)",
-            "🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)"
+            "🌍 Wisconsin Stull (2000) 現代地球單層溫室 (S₀=1368)",
+            "🌡️ 半透明灰體大氣 Grey (ε≈0.62, S₀=1368)"
         ],
-        index=0 if st.session_state.get("daisy0d_phys", "lovelock") == "lovelock" else 1,
+        index={"lovelock": 0, "stull": 1, "grey": 2}.get(st.session_state.get("daisy0d_phys", "lovelock"), 0),
         key="daisy0d_phys_select"
     )
-    physics_mode = "stull" if "Stull" in physics_mode_label else "lovelock"
+    if "Stull" in physics_mode_label:
+        physics_mode = "stull"
+    elif "Grey" in physics_mode_label or "灰體" in physics_mode_label:
+        physics_mode = "grey"
+    else:
+        physics_mode = "lovelock"
     if st.session_state.get("daisy0d_phys") != physics_mode:
         st.session_state["daisy0d_phys"] = physics_mode
-        if physics_mode == "stull" and st.session_state.get("s0_dw", 917.0) == 917.0:
+        if physics_mode in ("stull", "grey") and st.session_state.get("s0_dw", 917.0) == 917.0:
             set_param_value("s0_dw", 1368.0)
         elif physics_mode == "lovelock" and st.session_state.get("s0_dw", 1368.0) == 1368.0:
             set_param_value("s0_dw", 917.0)
 
-    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dw", 600.0, 1600.0, 1368.0 if physics_mode == "stull" else 917.0, 10.0, format="%.1f")
+    s0 = render_sync_input("太陽常數 S₀ (W/m²)", "s0_dw", 600.0, 1600.0, 1368.0 if physics_mode in ("stull", "grey") else 917.0, 10.0, format="%.1f")
     l_val = render_sync_input("太陽光度因子 L", "l_val_dw", 0.5, 1.8, 1.0, 0.02, format="%.2f")
+
+    # epsilon 滑桿：僅在 grey 模式下顯示
+    if physics_mode == "grey":
+        epsilon_val = render_sync_input("灰體大氣放射率 ε (epsilon)", "epsilon_dw", 0.1, 1.0, 0.62, 0.01, format="%.2f")
+        # 即時估算裸地基線溫度（alpha_u 尚未讀入，用預設 0.5 估算）
+        _sigma = 5.670374e-8
+        _q_ref = s0 * l_val / (4.0 * _sigma)
+        _Ts4_ref = _q_ref * (1.0 - 0.5) / max(1e-9, 1.0 - epsilon_val / 2.0)
+        _T_base = max(1.0, _Ts4_ref) ** 0.25 - 273.15
+        st.caption(
+            f"ε=0 → 無溫室效應；ε=1 → 完全不透明 (等同 Stull)；ε≈0.62 → 現實地球大氣 | "
+            f"目前設定下裸地基線約 **{_T_base:.1f} °C**（alpha_u=0.5 估算）。"
+            f"若 < 5°C 建議調高 S₀ 或 L 讓雛菊有足夠熱量存活。"
+        )
+    else:
+        epsilon_val = 0.62  # 非 grey 模式無需此參數，維持預設值
 
     with st.expander("🔬 生態與反照率參數 (滑桿 + 精確數值)", expanded=False):
         alpha_w = render_sync_input("白雛菊反照率 α_w", "alpha_w_dw", 0.5, 0.9, 0.75, 0.02, format="%.2f")
@@ -108,14 +133,32 @@ with st.expander("📐 點擊展開：經典雛菊世界數學原理與生物物
       $$\alpha_p = a_w \alpha_w + a_b \alpha_b + a_u \alpha_u$$
     - **物理大氣體系**：
       - **🌻 Lovelock (1983) 等效無大氣**：$T_p = \left( \frac{S_0 L (1 - \alpha_p)}{\sigma} \right)^{1/4} - 273.15$
-      - **🌍 Wisconsin Stull (2000) 單層溫室效應**：$q = \frac{S_0 L}{4\sigma}, \quad T_s^4 = 2 q (1 - \alpha_p), \quad T_p = (T_s^4)^{1/4} - 273.15$
+      - **🌍 Wisconsin Stull (2000) 單層溫室效應**：$q_{\text{flux}} = \frac{S_0 L}{4\sigma}, \quad T_s^4 = 2 q_{\text{flux}} (1 - \alpha_p), \quad T_p = (T_s^4)^{1/4} - 273.15$
+      - **🌡️ 半透明灰體大氣 (Grey)**：$T_s^4 = \dfrac{S_0 L (1 - \alpha_p)}{4\sigma\left(1 - \varepsilon/2\right)}, \quad T_p = T_s - 273.15$，其中 $\varepsilon \approx 0.62$ 為可調放射率（$\varepsilon=1$ 時公式與 Stull 相同；$\varepsilon=0$ 僅表示此式沒有溫室增溫，因使用 $S_0/4$，不等於採用 $S_0=917$ 的 Lovelock 參數化）
     - **局地微氣候溫度**（局地反照率差異吸收能量，使黑雛菊周邊更熱、白雛菊周邊更冷）：
       - Lovelock 模式：$T_w = T_p + q(\alpha_p - \alpha_w), \quad T_b = T_p + q(\alpha_p - \alpha_b)$
-      - Stull 模式：$T_w^4 = \max(10^5, (1 - T_r) q (\alpha_p - \alpha_w) + T_s^4), \quad T_b^4 = \max(10^5, (1 - T_r) q (\alpha_p - \alpha_b) + T_s^4)$（其中水平傳輸 $T_r = 0.6$）
+      - Stull / Grey 模式：$T_w^4 = \max(10^5, (1 - T_r) q_{\text{flux}} (\alpha_p - \alpha_w) + T_s^4), \quad T_b^4 = \max(10^5, (1 - T_r) q_{\text{flux}} (\alpha_p - \alpha_b) + T_s^4)$（其中水平傳輸 $T_r = 0.6$）
     - **溫度生長函數**（最適溫度為 $22.5^\circ\text{C}$）：
       $$\beta(T) = \max\left(0, 1 - 0.003265(22.5 - T)^2\right)$$
     - **族群消長方程式**：
       $$\frac{da_w}{dt} = a_w(a_u \beta(T_w) - \gamma), \quad \frac{da_b}{dt} = a_b(a_u \beta(T_b) - \gamma)$$
+
+    ### 參數說明
+    | 符號 | 意義 | 單位／範圍 |
+    |---|---|---|
+    | $S_0$ | 基準太陽常數；Lovelock 等效無大氣模式常用 917，Stull／Grey 模式常用 1368 | W/m² |
+    | $L$ | 相對太陽光度因子 | 無因次 |
+    | $a_w, a_b, a_u$ | 白雛菊、黑雛菊與裸地覆蓋率；$a_u=1-a_w-a_b$ | 0–1 |
+    | $\alpha_w, \alpha_b, \alpha_u, \alpha_p$ | 各地表及行星平均反照率；$\alpha_p$ 為覆蓋率加權平均 | 0–1 |
+    | $\sigma$ | Stefan–Boltzmann 常數 | $5.670374\times10^{-8}$ W·m⁻²·K⁻⁴ |
+    | $\varepsilon$ | Grey 模式的灰體大氣放射率；控制單層大氣的溫室增溫 | 0.1–1.0 |
+    | $q$ | Lovelock 模式局地微氣候溫度反饋係數 | ℃ |
+    | $q_{\text{flux}}=S_0L/(4\sigma)$ | Stull／Grey 模式的入射平均輻射通量係數 | K⁴ |
+    | $T_r$ | Stull／Grey 模式的水平熱傳輸係數 | 無因次；本模型固定為 0.6 |
+    | $T_p, T_s, T_w, T_b$ | 行星均溫、表面溫度及白／黑雛菊局地溫度 | °C（輻射平衡計算使用 K⁴） |
+    | $\beta(T)$ | 雛菊溫度生長函數，最適溫度為 22.5°C | 0–1 |
+    | $\gamma$ | 雛菊死亡率 | 每單位時間 |
+    | $dt, N$ | 數值積分時間步長與迭代步數 | 時間單位、步 |
     """)
 
 tab1, tab2, tab3, tab4 = st.tabs([
@@ -129,7 +172,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 df_dw, t_nobio = run_daisyworld(
     S0=s0, L=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
     q=q_val, gamma=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera,
-    physics_mode=physics_mode
+    physics_mode=physics_mode, epsilon=epsilon_val
 )
 
 # Tab 1: Time Dynamics
@@ -145,10 +188,10 @@ with tab1:
 
     if "動態演變畫布" in render_engine:
         components.html(
-            get_interactive_daisy0d_html(
+            interactive_daisy_0d.get_interactive_daisy0d_html(
                 s0=s0, l_val=l_val, alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
                 q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera,
-                physics_mode=physics_mode
+                physics_mode=physics_mode, epsilon=epsilon_val
             ),
             height=890,
             scrolling=True
@@ -203,7 +246,8 @@ with tab2:
         df_l = sweep_daisyworld_luminosity(
             S0=s0, l_min=0.6, l_max=1.65, num_l=50,
             alpha_w=alpha_w, alpha_b=alpha_b, alpha_u=alpha_u,
-            q=q_val, gamma=gamma_val, physics_mode=physics_mode
+            q=q_val, gamma=gamma_val, physics_mode=physics_mode,
+            epsilon=epsilon_val
         )
 
     l_col1, l_col2 = st.columns(2)
@@ -272,6 +316,3 @@ with tab4:
         file_name=f"daisyworld0d_S0_{s0}_L_{l_val}.csv",
         mime="text/csv"
     )
-
-
-
