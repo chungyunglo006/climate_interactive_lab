@@ -5,11 +5,58 @@ MEDIA_EXPORT_SCRIPT = r"""
 (() => {
     const formatSelect = document.getElementById('sel_video_format');
     const fpsSelect = document.getElementById('sel_video_fps');
+    const heightSelect = document.getElementById('sel_chart_height');
+    const layoutSelect = document.getElementById('sel_chart_layout');
+    const iterationRangeSelect = document.getElementById('sel_iteration_range');
     let gifFrames = [];
     let gifTimer = null;
     let gifWidth = 1200;
     let gifHeight = 680;
     let activeFormat = null;
+    window.visibleIterationFraction = Number(iterationRangeSelect.value) / 100;
+
+    function refreshChartLayout() {
+        document.querySelectorAll('.canvas-container').forEach(container => {
+            container.style.height = `${heightSelect.value}px`;
+        });
+        const chartGrid = document.querySelector('.charts-grid');
+        if (chartGrid) {
+            chartGrid.style.gridTemplateColumns = layoutSelect.value === 'stacked' ? '1fr' : '';
+        }
+        window.visibleIterationFraction = Number(iterationRangeSelect.value) / 100;
+        if (typeof resizeCanvases === 'function') resizeCanvases();
+        else {
+            drawStaticBackgrounds();
+            renderDynamicTraces();
+        }
+    }
+
+    heightSelect.addEventListener('change', refreshChartLayout);
+    layoutSelect.addEventListener('change', refreshChartLayout);
+    iterationRangeSelect.addEventListener('change', refreshChartLayout);
+    document.querySelectorAll('#slider_itera, #num_itera').forEach(input => {
+        input.addEventListener('input', () => {
+            requestAnimationFrame(() => {
+                if (typeof drawStaticBackgrounds === 'function') drawStaticBackgrounds();
+                if (typeof renderDynamicTraces === 'function') renderDynamicTraces();
+                const hint = document.getElementById('view_mode_hint');
+                if (hint && typeof state !== 'undefined' && state.chartView === 'timeseries') {
+                    hint.innerText = `展示當前設定下 ${state.itera} 步時間動態數值演變歷程。`;
+                }
+            });
+        });
+        input.addEventListener('change', () => {
+            requestAnimationFrame(() => {
+                if (typeof drawStaticBackgrounds === 'function') drawStaticBackgrounds();
+                if (typeof renderDynamicTraces === 'function') renderDynamicTraces();
+                const hint = document.getElementById('view_mode_hint');
+                if (hint && typeof state !== 'undefined' && state.chartView === 'timeseries') {
+                    hint.innerText = `展示當前設定下 ${state.itera} 步時間動態數值演變歷程。`;
+                }
+            });
+        });
+    });
+    refreshChartLayout();
 
     function setRecordingControlsDisabled(disabled) {
         formatSelect.disabled = disabled;
@@ -261,6 +308,15 @@ MEDIA_EXPORT_SCRIPT = r"""
 def inject_media_export_controls(html_code):
     """Adds format/quality controls and shared recording implementation to a canvas page."""
     controls = """
+        <label style="color:#94a3b8;font-size:.75rem;">圖表高度
+            <select id="sel_chart_height"><option value="350">標準</option><option value="450" selected>加高</option><option value="550">大圖</option><option value="650">超大圖</option></select>
+        </label>
+        <label style="color:#94a3b8;font-size:.75rem;">圖表版面
+            <select id="sel_chart_layout"><option value="columns" selected>雙欄</option><option value="stacked">單欄寬幅</option></select>
+        </label>
+        <label id="iteration_range_control" style="color:#94a3b8;font-size:.75rem;">時間軸顯示
+            <select id="sel_iteration_range"><option value="25">前 25%</option><option value="50">前 50%</option><option value="75">前 75%</option><option value="100" selected>全部步數</option></select>
+        </label>
         <label style="color:#94a3b8;font-size:.75rem;">圖片格式
             <select id="sel_image_format"><option value="png">PNG</option><option value="webp">WebP</option></select>
         </label>
@@ -278,4 +334,12 @@ def inject_media_export_controls(html_code):
     html_code = html_code.replace(button, controls + button)
     html_code = html_code.replace('📸 截圖 PNG</button>', '📸 匯出圖片</button>')
     script = f"<script>{MEDIA_EXPORT_SCRIPT}</script>"
-    return html_code.replace("</body>", script + "</body>")
+    html_code = html_code.replace("</body>", script + "</body>")
+    hide_iteration_range = """
+<script>
+if (!(typeof state !== 'undefined' && state.simData && Array.isArray(state.simData.t))) {
+    document.getElementById('iteration_range_control').style.display = 'none';
+}
+</script>
+"""
+    return html_code.replace("</body>", hide_iteration_range + "</body>")

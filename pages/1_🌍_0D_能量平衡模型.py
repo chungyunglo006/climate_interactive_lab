@@ -174,8 +174,8 @@ with tab1:
                 s0=s0, t_init=t_init, alpha_ice=alpha_ice, alpha_land=alpha_land,
                 t_ice=t_ice, t_land=t_land, epsilon=epsilon, dt=dt, itera=itera
             ),
-            height=890,
-            scrolling=True
+            height=1750,
+            scrolling=False
         )
     else:
         df_sim = run_ebm(

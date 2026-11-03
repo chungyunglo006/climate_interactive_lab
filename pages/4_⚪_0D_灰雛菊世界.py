@@ -170,8 +170,8 @@ with tab1:
                 q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, ag_init=ag_init, itera=itera,
                 physics_mode=physics_mode
             ),
-            height=890,
-            scrolling=True
+            height=2500,
+            scrolling=False
         )
     else:
         last = df_grey.iloc[-1]
@@ -277,5 +277,4 @@ with tab3:
         file_name=f"daisyworld_grey_S0_{s0}_L_{l_val}.csv",
         mime="text/csv"
     )
-
 

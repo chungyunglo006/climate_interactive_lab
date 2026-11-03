@@ -148,8 +148,8 @@ with tab1:
                 sc=sc, frac_sc=frac_sc, a_param=a_param, b_param=b_param,
                 k_diff=k_diff, aice=aice, aland=aland, tcrit=tcrit, itera=itera
             ),
-            height=890,
-            scrolling=True
+            height=1750,
+            scrolling=False
         )
     else:
         ice_lats = [lat for lat, t in zip(df_1d["緯度 (度)"], df_1d["最終溫度 (℃)"]) if t < tcrit]
@@ -294,5 +294,4 @@ with tab4:
         file_name=f"ebm1d_SC_{sc}_FracSC_{frac_sc}_K_{k_diff}.csv",
         mime="text/csv"
     )
-
 

@@ -193,8 +193,8 @@ with tab1:
                 q_val=q_val, gamma_val=gamma_val, aw_init=aw_init, ab_init=ab_init, itera=itera,
                 physics_mode=physics_mode, epsilon=epsilon_val
             ),
-            height=890,
-            scrolling=True
+            height=2500,
+            scrolling=False
         )
     else:
         last = df_dw.iloc[-1]

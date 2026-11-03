@@ -169,8 +169,8 @@ with tab1:
                 q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera,
                 physics_mode=physics_mode
             ),
-            height=890,
-            scrolling=True
+            height=1800,
+            scrolling=False
         )
     else:
         st.markdown("""
@@ -297,5 +297,4 @@ with tab4:
         file_name=f"daisyworld1d_S0_{s0}_L_{l_val}_K_{k_diff}.csv",
         mime="text/csv"
     )
-
 

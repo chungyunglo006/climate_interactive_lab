@@ -495,9 +495,6 @@ canvas {{
 const SIGMA = 5.670374e-8;
 const SECONDS_PER_YEAR = 3.154e7;
 const C_OCEAN = 2.09e8;
-const DT = {dt};
-const ITERA = {itera};
-
 // State
 let state = {{
     s0: {s0},
@@ -619,7 +616,7 @@ function runSimulation() {{
         const r_out = eps * SIGMA * Math.pow(T, 4);
         const imb = r_in - r_out;
 
-        t.push(step * DT);
+        t.push(step * state.dt);
         TC.push(T - 273.15);
         Rin.push(r_in);
         Rout.push(r_out);
@@ -644,6 +641,8 @@ function runSimulation() {{
 function drawStaticBackgrounds() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
+    const xMax = Math.max(state.itera * state.dt * window.visibleIterationFraction, 1e-9);
+    const xStep = Math.max(2, Math.round(xMax / 6));
 
     // --- Chart 1 Static BG ---
     ctxBg1.clearRect(0, 0, width, height);
@@ -680,7 +679,7 @@ function drawStaticBackgrounds() {{
     ctxBg1.stroke();
     ctxBg1.fillStyle = '#38bdf8';
     ctxBg1.textAlign = 'left';
-    ctxBg1.fillText('冰封臨界線 -10.1℃', margin.left + 8, yTice - 7);
+    ctxBg1.fillText(`冰封臨界線 ${{(state.t_ice - 273.15).toFixed(1)}}℃`, margin.left + 8, yTice - 7);
 
     const yTland = margin.top + plotH * (1.0 - ((state.t_land - 273.15) - yMin1) / (yMax1 - yMin1));
     ctxBg1.strokeStyle = '#4ade80';
@@ -689,11 +688,9 @@ function drawStaticBackgrounds() {{
     ctxBg1.lineTo(margin.left + plotW, yTland);
     ctxBg1.stroke();
     ctxBg1.fillStyle = '#4ade80';
-    ctxBg1.fillText('無冰臨界線 9.9℃', margin.left + 8, yTland - 7);
+    ctxBg1.fillText(`無冰臨界線 ${{(state.t_land - 273.15).toFixed(1)}}℃`, margin.left + 8, yTland - 7);
     ctxBg1.restore();
 
-    const xMax = ITERA * DT;
-    const xStep = Math.max(2, Math.round(xMax / 6));
     ctxBg1.textAlign = 'center';
     ctxBg1.textBaseline = 'top';
 
@@ -754,7 +751,7 @@ function renderDynamicTraces() {{
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
     const d = state.simData;
-    const xMax = ITERA * DT;
+    const xMax = Math.max(state.itera * state.dt * window.visibleIterationFraction, 1e-9);
 
     // --- Chart 1: Temperature Trace ---
     ctxFg1.clearRect(0, 0, width, height);
@@ -949,6 +946,7 @@ function bindSync(slider, numInput, stateKey, isInt=false) {{
         numInput.value = v;
         state[stateKey] = v;
         runSimulation();
+        drawStaticBackgrounds();
         renderDynamicTraces();
     }});
 
@@ -960,6 +958,7 @@ function bindSync(slider, numInput, stateKey, isInt=false) {{
             slider.value = v;
             state[stateKey] = v;
             runSimulation();
+            drawStaticBackgrounds();
             renderDynamicTraces();
         }}
     }};
@@ -974,6 +973,9 @@ bindSync(sliderEps, numEps, 'epsilon', false);
 bindSync(sliderAice, numAice, 'alpha_ice', false);
 bindSync(sliderAland, numAland, 'alpha_land', false);
 bindSync(sliderTice, numTice, 't_ice', false);
+bindSync(sliderTland, numTland, 't_land', false);
+bindSync(sliderDt, numDt, 'dt', false);
+bindSync(sliderItera, numItera, 'itera', true);
 
 btnTogglePlay.addEventListener('click', togglePlay);
 
@@ -1168,7 +1170,8 @@ fg1.addEventListener('mousemove', e => {{
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         const normX = (mouseX - margin.left) / plotW;
-        const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
+        const visibleSteps = Math.round(state.itera * window.visibleIterationFraction);
+        const idx = Math.min(visibleSteps, Math.max(0, Math.round(normX * visibleSteps)));
         const d = state.simData;
         if (d) {{
             tooltip.style.display = 'block';
@@ -1194,7 +1197,8 @@ fg2.addEventListener('mousemove', e => {{
     const plotW = width - margin.left - margin.right;
     if (mouseX >= margin.left && mouseX <= margin.left + plotW) {{
         const normX = (mouseX - margin.left) / plotW;
-        const idx = Math.min(ITERA, Math.max(0, Math.round(normX * ITERA)));
+        const visibleSteps = Math.round(state.itera * window.visibleIterationFraction);
+        const idx = Math.min(visibleSteps, Math.max(0, Math.round(normX * visibleSteps)));
         const d = state.simData;
         if (d) {{
             tooltip.style.display = 'block';

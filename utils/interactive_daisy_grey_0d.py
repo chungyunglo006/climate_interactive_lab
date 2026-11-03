@@ -1209,10 +1209,12 @@ function setChartView(view) {{
         titleChart2.innerText = '🌡️ 行星與物種溫度時間動態 (Time Dynamics)';
         legendChart2.innerHTML = `
             <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div> 行星均溫 Tp</div>
+            <div class="legend-item"><div class="legend-color" style="background: #f8fafc;"></div> 白雛菊 Tw</div>
+            <div class="legend-item"><div class="legend-color" style="background: #64748b;"></div> 黑雛菊 Tb</div>
             <div class="legend-item"><div class="legend-color" style="background: #94a3b8; border-top: 1px dashed;"></div> 灰雛菊 Tg</div>
             <div class="legend-item"><div class="legend-color" style="background: #ef4444; border-top: 1px dashed;"></div> 死星基線</div>
         `;
-        viewModeHint.innerText = '展示當前光度下 150 步時間動態數值演變歷程。';
+        viewModeHint.innerText = `展示當前光度下 ${{state.itera}} 步時間動態數值演變歷程。`;
     }}
     drawStaticBackgrounds();
     renderDynamicTraces();
@@ -1273,7 +1275,7 @@ function drawStaticBackgrounds() {{
         ctxBg1.font = '11px "Plus Jakarta Sans", sans-serif';
         ctxBg1.fillText('太陽光度 L (Luminosity)', margin.left + plotW / 2, margin.top + plotH + 24);
     }} else {{
-        const xMax = state.itera * state.dt;
+        const xMax = Math.max(state.itera * window.visibleIterationFraction, 1e-9);
         const xStep = Math.max(2, Math.round(xMax / 6));
         for (let xVal = 0; xVal <= xMax; xVal += xStep) {{
             const x = margin.left + plotW * (xVal / xMax);
@@ -1284,7 +1286,7 @@ function drawStaticBackgrounds() {{
             ctxBg1.fillText(xVal, x, margin.top + plotH + 8);
         }}
         ctxBg1.fillStyle = '#64748b';
-        ctxBg1.fillText('演化時間 (Time Steps)', margin.left + plotW / 2, margin.top + plotH + 24);
+        ctxBg1.fillText('迭代步數 (Iterations)', margin.left + plotW / 2, margin.top + plotH + 24);
     }}
 
     ctxBg1.strokeStyle = 'rgba(255, 255, 255, 0.12)';
@@ -1295,8 +1297,8 @@ function drawStaticBackgrounds() {{
     ctxBg2.fillStyle = 'rgba(15, 23, 42, 0.45)';
     ctxBg2.fillRect(margin.left, margin.top, plotW, plotH);
 
-    const yMin2 = 0.0, yMax2 = 50.0;
-    const yTicks2 = [0, 10, 20, 30, 40, 50];
+    const yMin2 = isCurves ? 0.0 : -40.0, yMax2 = 50.0;
+    const yTicks2 = isCurves ? [0, 10, 20, 30, 40, 50] : [-40, -20, 0, 20, 40];
 
     ctxBg2.font = '11px "JetBrains Mono", monospace';
     ctxBg2.fillStyle = '#64748b';
@@ -1355,7 +1357,7 @@ function drawStaticBackgrounds() {{
         ctxBg2.font = '11px "Plus Jakarta Sans", sans-serif';
         ctxBg2.fillText('太陽光度 L (Luminosity)', margin.left + plotW / 2, margin.top + plotH + 24);
     }} else {{
-        const xMax = state.itera * state.dt;
+        const xMax = Math.max(state.itera * window.visibleIterationFraction, 1e-9);
         const xStep = Math.max(2, Math.round(xMax / 6));
         for (let xVal = 0; xVal <= xMax; xVal += xStep) {{
             const x = margin.left + plotW * (xVal / xMax);
@@ -1366,7 +1368,7 @@ function drawStaticBackgrounds() {{
             ctxBg2.fillText(xVal, x, margin.top + plotH + 8);
         }}
         ctxBg2.fillStyle = '#64748b';
-        ctxBg2.fillText('演化時間 (Time Steps)', margin.left + plotW / 2, margin.top + plotH + 24);
+        ctxBg2.fillText('迭代步數 (Iterations)', margin.left + plotW / 2, margin.top + plotH + 24);
     }}
 
     ctxBg2.strokeStyle = 'rgba(255, 255, 255, 0.12)';
@@ -1577,7 +1579,7 @@ function renderDynamicTraces() {{
 
     }} else {{
         // Timeseries mode
-        const xMax = state.itera * state.dt;
+        const xMax = Math.max(state.itera * window.visibleIterationFraction, 1e-9);
 
         // Chart 1
         ctxFg1.clearRect(0, 0, width, height);
@@ -1592,7 +1594,7 @@ function renderDynamicTraces() {{
         ctxFg1.setLineDash([4, 3]);
         ctxFg1.beginPath();
         for (let i = 0; i < d.t.length; i++) {{
-            const x = margin.left + plotW * (d.t[i] / xMax);
+            const x = margin.left + plotW * (i / xMax);
             const y = margin.top + plotH * (1.0 - d.au[i]);
             if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
         }}
@@ -1606,7 +1608,7 @@ function renderDynamicTraces() {{
         ctxFg1.lineWidth = 2.8;
         ctxFg1.beginPath();
         for (let i = 0; i < d.t.length; i++) {{
-            const x = margin.left + plotW * (d.t[i] / xMax);
+            const x = margin.left + plotW * (i / xMax);
             const y = margin.top + plotH * (1.0 - d.ag[i]);
             if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
         }}
@@ -1619,7 +1621,7 @@ function renderDynamicTraces() {{
         ctxFg1.lineWidth = 2.6;
         ctxFg1.beginPath();
         for (let i = 0; i < d.t.length; i++) {{
-            const x = margin.left + plotW * (d.t[i] / xMax);
+            const x = margin.left + plotW * (i / xMax);
             const y = margin.top + plotH * (1.0 - d.ab[i]);
             if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
         }}
@@ -1632,7 +1634,7 @@ function renderDynamicTraces() {{
         ctxFg1.lineWidth = 3.0;
         ctxFg1.beginPath();
         for (let i = 0; i < d.t.length; i++) {{
-            const x = margin.left + plotW * (d.t[i] / xMax);
+            const x = margin.left + plotW * (i / xMax);
             const y = margin.top + plotH * (1.0 - d.aw[i]);
             if (i === 0) ctxFg1.moveTo(x, y); else ctxFg1.lineTo(x, y);
         }}
@@ -1641,7 +1643,7 @@ function renderDynamicTraces() {{
 
         // Chart 2
         ctxFg2.clearRect(0, 0, width, height);
-        const yMin2 = 0.0, yMax2 = 50.0;
+        const yMin2 = -40.0, yMax2 = 50.0;
         ctxFg2.save();
         ctxFg2.beginPath();
         ctxFg2.rect(margin.left, margin.top, plotW, plotH);
@@ -1663,12 +1665,34 @@ function renderDynamicTraces() {{
         ctxFg2.lineWidth = 1.8;
         ctxFg2.beginPath();
         for (let i = 0; i < d.t.length; i++) {{
-            const x = margin.left + plotW * (d.t[i] / xMax);
+            const x = margin.left + plotW * (i / xMax);
             const y = margin.top + plotH * (1.0 - (d.Tg[i] - yMin2) / (yMax2 - yMin2));
             if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
         }}
         ctxFg2.stroke();
         ctxFg2.setLineDash([]);
+
+        // White daisy local temperature
+        ctxFg2.strokeStyle = '#f8fafc';
+        ctxFg2.lineWidth = 2.2;
+        ctxFg2.beginPath();
+        for (let i = 0; i < d.t.length; i++) {{
+            const x = margin.left + plotW * (i / xMax);
+            const y = margin.top + plotH * (1.0 - (d.Tw[i] - yMin2) / (yMax2 - yMin2));
+            if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
+        }}
+        ctxFg2.stroke();
+
+        // Black daisy local temperature
+        ctxFg2.strokeStyle = '#64748b';
+        ctxFg2.lineWidth = 2.2;
+        ctxFg2.beginPath();
+        for (let i = 0; i < d.t.length; i++) {{
+            const x = margin.left + plotW * (i / xMax);
+            const y = margin.top + plotH * (1.0 - (d.Tb[i] - yMin2) / (yMax2 - yMin2));
+            if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
+        }}
+        ctxFg2.stroke();
 
         // Planet temp
         ctxFg2.shadowBlur = 8;
@@ -1677,7 +1701,7 @@ function renderDynamicTraces() {{
         ctxFg2.lineWidth = 3.2;
         ctxFg2.beginPath();
         for (let i = 0; i < d.t.length; i++) {{
-            const x = margin.left + plotW * (d.t[i] / xMax);
+            const x = margin.left + plotW * (i / xMax);
             const y = margin.top + plotH * (1.0 - (d.Tp[i] - yMin2) / (yMax2 - yMin2));
             if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
         }}
@@ -2065,7 +2089,8 @@ fg1.addEventListener('mousemove', e => {{
             }}
         }} else {{
             const normX = (mouseX - margin.left) / plotW;
-            const idx = Math.min(state.itera, Math.max(0, Math.round(normX * state.itera)));
+            const visibleSteps = Math.round(state.itera * window.visibleIterationFraction);
+            const idx = Math.min(visibleSteps, Math.max(0, Math.round(normX * visibleSteps)));
             const d = state.simData;
             if (d && d.t && d.t[idx] !== undefined) {{
                 tooltip.style.display = 'block';
@@ -2107,7 +2132,8 @@ fg2.addEventListener('mousemove', e => {{
             }}
         }} else {{
             const normX = (mouseX - margin.left) / plotW;
-            const idx = Math.min(state.itera, Math.max(0, Math.round(normX * state.itera)));
+            const visibleSteps = Math.round(state.itera * window.visibleIterationFraction);
+            const idx = Math.min(visibleSteps, Math.max(0, Math.round(normX * visibleSteps)));
             const d = state.simData;
             if (d && d.t && d.t[idx] !== undefined) {{
                 tooltip.style.display = 'block';

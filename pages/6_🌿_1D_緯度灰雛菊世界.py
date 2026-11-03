@@ -170,8 +170,8 @@ with tab1:
                 q_val=q_val, gamma_val=gamma_val, k_diff=k_diff, a_param=a_param, b_param=b_param, itera=itera,
                 physics_mode=physics_mode
             ),
-            height=890,
-            scrolling=True
+            height=1800,
+            scrolling=False
         )
     else:
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -288,5 +288,4 @@ with tab4:
         file_name=f"daisyworld1d_grey_S0_{s0}_L_{l_val}.csv",
         mime="text/csv"
     )
-
 
