@@ -1553,28 +1553,6 @@ function renderDynamicTraces() {{
             ctxFg2.lineTo(xCur2, margin.top + plotH);
             ctxFg2.stroke();
             ctxFg2.shadowBlur = 0;
-
-            // White daisy local temperature
-            ctxFg2.strokeStyle = '#f8fafc';
-            ctxFg2.lineWidth = 2.2;
-            ctxFg2.beginPath();
-            for (let i = 0; i < d.t.length; i++) {{
-                const x = margin.left + plotW * (i / xMax);
-                const y = margin.top + plotH * (1.0 - (d.Tw[i] - yMin2) / (yMax2 - yMin2));
-                if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
-            }}
-            ctxFg2.stroke();
-
-            // Black daisy local temperature
-            ctxFg2.strokeStyle = '#64748b';
-            ctxFg2.lineWidth = 2.2;
-            ctxFg2.beginPath();
-            for (let i = 0; i < d.t.length; i++) {{
-                const x = margin.left + plotW * (i / xMax);
-                const y = margin.top + plotH * (1.0 - (d.Tb[i] - yMin2) / (yMax2 - yMin2));
-                if (i === 0) ctxFg2.moveTo(x, y); else ctxFg2.lineTo(x, y);
-            }}
-            ctxFg2.stroke();
             ctxFg2.restore();
 
             // Glowing indicator dots at current Tp and Tnobio
